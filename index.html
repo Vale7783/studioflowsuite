@@ -1,4 +1,4 @@
-ff<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="it">
 <head>
   <meta charset="UTF-8" />
@@ -14,14 +14,23 @@ ff<!DOCTYPE html>
 
   <script type="text/babel">
     const SUPABASE_URL = "https://mgmhzlmufllxriithtth.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_jXQVt0X8Av8E6qe_9xBxfQ_Jw1qwm1O";
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    const { useState } = React;
+    const SUPABASE_ANON_KEY = "sb_publishable_jXQVt0X8Av8E6qe_9xBxfQ_Jw1qwm1O";
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const { useState, useEffect } = React;
+
+    const TARIFFE_SERVIZI = {
+      "Modello 730 Singolo": 70.00,
+      "ISEE / DSU Ordinario": 20.00,
+      "Dichiarazione di Successione + Voltura": 550.00,
+      "Pratica Previdenziale / Patronato": 30.00,
+      "Cedolino / Contratto Lavoro": 25.00,
+      "IMU / Visure / Pratica Fiscale": 40.00
+    };
 
     function StudioFlowSuite() {
       const [activeTab, setActiveTab] = useState('dashboard');
-      const [currentProfile, setCurrentProfile] = useState('mio_studio'); 
-      
+      const [currentProfile, setCurrentProfile] = useState('mio_studio');
+
       const [selectedPratica, setSelectedPratica] = useState(null);
       const [showModal, setShowModal] = useState(false);
       const [showSportelloModal, setShowSportelloModal] = useState(false);
@@ -48,107 +57,108 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
       const [contributoImmigrazione, setContributoImmigrazione] = useState(100);
       const [includeKitCartaceo, setIncludeKitCartaceo] = useState(false);
       const [praticaPrevidenzialeAbbinata, setPraticaPrevidenzialeAbbinata] = useState(false);
-      
+
       const [nuovoClienteNome, setNuovoClienteNome] = useState('');
       const [nuovoClienteCf, setNuovoClienteCf] = useState('');
       const [nuovoTipoCliente, setNuovoTipoCliente] = useState('Occasionale');
       const [aggiungiQuotaAssociativa, setAggiungiQuotaAssociativa] = useState(false);
       const [soloCaricamentoDocumenti, setSoloCaricamentoDocumenti] = useState(false);
       const [nuovoCanaleIva, setNuovoCanaleIva] = useState('studio');
-      const [nuovoPromemoria, setNuovoPromemoria] = useState('');
       const [nuovoServizio, setNuovoServizio] = useState('Modello 730 Singolo');
+      const [nuovoPromemoria, setNuovoPromemoria] = useState('');
+
       const [pratiche, setPratiche] = useState([
-        { 
-          id: 1, 
+        {
+          id: 1,
           clientId: "RSSMRA80A01D612K",
           sedeCompetenza: "Firenze",
-          cliente: "Rossi Mario", 
-          tipoCliente: "Convenzionato", 
+          cliente: "Rossi Mario",
+          tipoCliente: "Convenzionato",
           quotaAssociativaPagata: false,
           quotaImporto: 25.00,
-          servizio: "Modello 730 Singolo (Documenti via Link OTP)", 
-          modalitaLavorazione: "Ufficio / Sportello", 
-          canale: "Studio Commercialista", 
-          stato: "Pronta per chiusura e incasso (Firenze)", 
-          semaforo: "verde", 
-          imponibile: 70.00, 
-          iva: true, 
+          servizio: "Modello 730 Singolo (Documenti via Link OTP)",
+          modalitaLavorazione: "Ufficio / Sportello",
+          canale: "Studio Commercialista",
+          stato: "Pronta per chiusura e incasso (Firenze)",
+          semaforo: "verde",
+          imponibile: 70.00,
+          iva: true,
           soloDocumenti: false,
-          promemoria: "" 
+          promemoria: ""
         },
-        { 
-          id: 2, 
+        {
+          id: 2,
           clientId: "CNTLNE85B45F839W",
           sedeCompetenza: "Firenze",
-          cliente: "Conti Elena", 
-          tipoCliente: "Occasionale", 
+          cliente: "Conti Elena",
+          tipoCliente: "Occasionale",
           quotaAssociativaPagata: false,
           quotaImporto: 0,
-          servizio: "Caricamento Documenti ISEE (Accesso QR Code/PIN)", 
-          modalitaLavorazione: "Solo Inserimento Documenti", 
-          canale: "Upload Protetto No-SPID", 
-          stato: "Documenti acquisiti (Gratuito) - Pratica da avviare", 
-          semaforo: "verde", 
-          imponibile: 0.00, 
-          iva: false, 
+          servizio: "Caricamento Documenti ISEE (Accesso QR Code/PIN)",
+          modalitaLavorazione: "Solo Inserimento Documenti",
+          canale: "Upload Protetto No-SPID",
+          stato: "Documenti acquisiti (Gratuito) - Pratica da avviare",
+          semaforo: "verde",
+          imponibile: 0.00,
+          iva: false,
           soloDocumenti: true,
-          promemoria: "" 
+          promemoria: ""
         },
-        { 
-          id: 3, 
+        {
+          id: 3,
           clientId: "BNCGLI75C50D612R",
           sedeCompetenza: "Firenze",
-          cliente: "Bianchi Giulia", 
-          tipoCliente: "Occasionale", 
+          cliente: "Bianchi Giulia",
+          tipoCliente: "Occasionale",
           quotaAssociativaPagata: false,
           quotaImporto: 0,
-          servizio: "Dichiarazione di Successione + Voltura", 
-          modalitaLavorazione: "Ufficio / Sportello", 
-          canale: "Studio Commercialista", 
-          stato: "In Standby - Attesa accettazione preventivo", 
-          semaforo: "giallo", 
-          imponibile: 550.00, 
-          iva: true, 
+          servizio: "Dichiarazione di Successione + Voltura",
+          modalitaLavorazione: "Ufficio / Sportello",
+          canale: "Studio Commercialista",
+          stato: "In Standby - Attesa accettazione preventivo",
+          semaforo: "giallo",
+          imponibile: 550.00,
+          iva: true,
           soloDocumenti: false,
-          preventivoAccettato: false, 
-          promemoria: "Ricontattare domani per conferma preventivo" 
+          preventivoAccettato: false,
+          promemoria: "Ricontattare domani per conferma preventivo"
         },
-        { 
-          id: 4, 
+        {
+          id: 4,
           clientId: "HMDKRM90D10Z330P",
           sedeCompetenza: "Firenze",
-          cliente: "Ahmed Karim", 
-          tipoCliente: "Occasionale", 
+          cliente: "Ahmed Karim",
+          tipoCliente: "Occasionale",
           quotaAssociativaPagata: false,
           quotaImporto: 0,
-          servizio: "Rinnovo Permesso di Soggiorno", 
-          modalitaLavorazione: "Ufficio / Sportello", 
-          canale: "Studio Commercialista", 
-          stato: "Documenti ricevuti - Da incassare in studio", 
-          semaforo: "verde", 
-          imponibile: 250.00, 
-          costiVivi: 196.46, 
-          iva: true, 
+          servizio: "Rinnovo Permesso di Soggiorno",
+          modalitaLavorazione: "Ufficio / Sportello",
+          canale: "Studio Commercialista",
+          stato: "Documenti ricevuti - Da incassare in studio",
+          semaforo: "verde",
+          imponibile: 250.00,
+          costiVivi: 196.46,
+          iva: true,
           soloDocumenti: false,
-          promemoria: "" 
+          promemoria: ""
         },
-        { 
-          id: 5, 
+        {
+          id: 5,
           clientId: "BRINDISI01",
           sedeCompetenza: "Brindisi",
-          cliente: "Esposito Salvatore", 
-          tipoCliente: "Occasionale", 
+          cliente: "Esposito Salvatore",
+          tipoCliente: "Occasionale",
           quotaAssociativaPagata: false,
           quotaImporto: 0,
-          servizio: "Elaborazione Cedolino & Paghe (Brindisi)", 
-          modalitaLavorazione: "Ufficio Sede Brindisi", 
-          canale: "CED Brindisi", 
-          stato: "In lavorazione autonoma a Brindisi", 
-          semaforo: "verde", 
-          imponibile: 25.00, 
-          iva: true, 
+          servizio: "Elaborazione Cedolino & Paghe (Brindisi)",
+          modalitaLavorazione: "Ufficio Sede Brindisi",
+          canale: "CED Brindisi",
+          stato: "In lavorazione autonoma a Brindisi",
+          semaforo: "verde",
+          imponibile: 25.00,
+          iva: true,
           soloDocumenti: false,
-          promemoria: "" 
+          promemoria: ""
         }
       ]);
 
@@ -182,6 +192,23 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         { area: "Immigrazione", servizio: "Rilascio / Rinnovo Permesso di Soggiorno", base: "—", studio: "€ 250,00 (+ costi vivi)", iva: "+ IVA 22% (sull'onorario)" },
         { area: "Invalidità", servizio: "Invalidità Civile / Accompagnamento / L. 104", base: "Gratuito (Istituto)", studio: "€ 45,00 - € 50,00", iva: "+ IVA 22% (in studio)" }
       ];
+
+      useEffect(() => {
+        const caricaPraticheSupabase = async () => {
+          try {
+            const { data, error } = await supabaseClient
+              .from('Pratiche')
+              .select('*')
+              .order('id', { ascending: false });
+            if (!error && Array.isArray(data) && data.length > 0) {
+              setPratiche((prev) => [...data, ...prev]);
+            }
+          } catch (e) {
+            // Mantiene i dati locali se la tabella non è ancora popolata o ha policy RLS attive
+          }
+        };
+        caricaPraticheSupabase();
+      }, []);
 
       const handleCheckCF = (val) => {
         setCfInput(val.toUpperCase());
@@ -218,96 +245,98 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         alert(`Pratica inoltrata con successo alla sede di ${nuovaSede}!`);
       };
 
-      const aggiungiNuovaPratica = () => {
-        if (!nuovoClienteNome) {
+      const isFirenze = currentProfile === 'mio_studio';
+      const isBrindisi = currentProfile === 'brindisi';
+      const isClienteIsolato = currentProfile === 'cliente_isolato';
+
+      const calcolaImponibileNuovaPratica = () => {
+        if (soloCaricamentoDocumenti) return 0.00;
+        return TARIFFE_SERVIZI[nuovoServizio] ?? 70.00;
+      };
+
+      const calcolaAnteprimaTotaleNuovaPratica = () => {
+        if (soloCaricamentoDocumenti) return "0.00";
+        const imponibile = calcolaImponibileNuovaPratica();
+        const hasIva = nuovoCanaleIva === 'studio';
+        const ivaAmount = hasIva ? imponibile * 0.22 : 0;
+        const quotaDaPagare = (nuovoTipoCliente === 'Convenzionato' && aggiungiQuotaAssociativa) ? 25.00 : 0;
+        return (imponibile + ivaAmount + quotaDaPagare).toFixed(2);
+      };
+
+      const aggiungiNuovaPratica = async () => {
+        if (!nuovoClienteNome.trim()) {
           alert('Inserisci il nome e cognome del cliente.');
           return;
         }
         const hasIva = !soloCaricamentoDocumenti && nuovoCanaleIva === 'studio';
+        const imponibileCalcolato = calcolaImponibileNuovaPratica();
+        const quotaImportoCalcolato = (nuovoTipoCliente === 'Convenzionato' && aggiungiQuotaAssociativa) ? 25.00 : 0;
+
         const nuova = {
-          id: pratiche.length + 1,
-          clientId: nuovoClienteCf || `CLI${Date.now()}`,
+          id: Date.now(),
+          clientId: nuovoClienteCf.trim().toUpperCase() || `CLI${Date.now()}`,
           sedeCompetenza: isBrindisi ? "Brindisi" : "Firenze",
-          cliente: nuovoClienteNome,
+          cliente: nuovoClienteNome.trim(),
           tipoCliente: nuovoTipoCliente,
-          quotaAssociativaPagata: !aggiungiQuotaAssociativa,
-          quotaImporto: aggiungiQuotaAssociativa ? 25.00 : 0,
+          quotaAssociativaPagata: nuovoTipoCliente === 'Convenzionato' ? !aggiungiQuotaAssociativa : false,
+          quotaImporto: quotaImportoCalcolato,
           servizio: soloCaricamentoDocumenti ? "Solo Inserimento Documenti" : nuovoServizio,
           modalitaLavorazione: "Ufficio / Sportello",
           canale: soloCaricamentoDocumenti ? "App / Link No-SPID" : (hasIva ? "Studio Commercialista" : "Esclusivo CAF"),
           stato: soloCaricamentoDocumenti ? "Documenti acquisiti (Gratuito)" : (nuovoPromemoria ? "In Standby" : "Pronta per lavorazione"),
           semaforo: nuovoPromemoria ? "giallo" : "verde",
-          imponibile: soloCaricamentoDocumenti
-            ? 0.00
-            : ({
-                "Modello 730 Singolo": 70.00,
-                "ISEE / DSU Ordinario": 20.00,
-                "Dichiarazione di Successione + Voltura": 550.00,
-                "Pratica Previdenziale / Patronato": 30.00,
-                "Cedolino / Contratto Lavoro": 25.00,
-                "IMU / Visure / Pratica Fiscale": 40.00
-              }[nuovoServizio] ?? 70.00),
+          imponibile: imponibileCalcolato,
           iva: hasIva,
           soloDocumenti: soloCaricamentoDocumenti,
           promemoria: nuovoPromemoria
         };
+
+        try {
+          await supabaseClient.from('Pratiche').insert([{
+            clientId: nuova.clientId,
+            sedeCompetenza: nuova.sedeCompetenza,
+            cliente: nuova.cliente,
+            tipoCliente: nuova.tipoCliente,
+            servizio: nuova.servizio,
+            canale: nuova.canale,
+            stato: nuova.stato,
+            imponibile: nuova.imponibile,
+            iva: nuova.iva,
+            soloDocumenti: nuova.soloDocumenti,
+            promemoria: nuova.promemoria
+          }]);
+        } catch (e) {
+          // Continua comunque con l'aggiornamento locale
+        }
+
         setPratiche([nuova, ...pratiche]);
         setShowSportelloModal(false);
         setNuovoClienteNome('');
         setNuovoClienteCf('');
+        setNuovoTipoCliente('Occasionale');
+        setAggiungiQuotaAssociativa(false);
+        setSoloCaricamentoDocumenti(false);
+        setNuovoCanaleIva('studio');
         setNuovoServizio('Modello 730 Singolo');
-        setNuovoPromemoria('');
-        alert('Nuova pratica registrata correttamente con isolamento GDPR!');
-      };
-      
-               value={nuovoServizio}
-                  onChange={(e) => setNuovoServizio(e.target.value)}
-                  style={{ width: '100%', padding: '8px', marginBottom: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
-                >
-                  <option value="Modello 730 Singolo (Documenti via Link OTP)">Modello 730 Singolo (Documenti via Link OTP)</option>
-                  <option value="ISEE / DSU Ordinario">ISEE / DSU Ordinario</option>
-                  <option value="Dichiarazione di Successione + Voltura">Dichiarazione di Successione + Voltura</option>
-                  <option value="Pratica Previdenziale / Patronato">Pratica Previdenziale / Patronato</option>
-                  <option value="Cedolino / Contratto Lavoro">Cedolino / Contratto Lavoro</option>
-                  <option value="IMU / Visure / Pratica Fiscale">IMU / Visure / Pratica Fiscale</option>
-                </select>
-          quotaImporto: aggiungiQuotaAssociativa ? 25.00 : 0,
-          servizio: soloCaricamentoDocumenti ? "Solo Inserimento Documenti" : "Pratica Fiscale / Servizio Studio",
-          modalitaLavorazione: "Ufficio / Sportello",
-          canale: soloCaricamentoDocumenti ? "App / Link No-SPID" : (hasIva ? "Studio Commercialista" : "Esclusivo CAF"),
-          stato: soloCaricamentoDocumenti ? "Documenti acquisiti (Gratuito)" : (nuovoPromemoria ? "In Standby" : "Pronta per lavorazione"),
-          semaforo: nuovoPromemoria ? "giallo" : "verde",
-          imponibile: soloCaricamentoDocumenti ? 0.00 : 70.00,
-          iva: hasIva,
-          soloDocumenti: soloCaricamentoDocumenti,
-          promemoria: nuovoPromemoria
-        };
-        setPratiche([nuova, ...pratiche]);
-        setShowSportelloModal(false);
-        setNuovoClienteNome('');
-        setNuovoClienteCf('');
         setNuovoPromemoria('');
         alert('Nuova pratica registrata correttamente con isolamento GDPR!');
       };
 
       const calcolaTotale = (p) => {
         if (p.soloDocumenti) return "0.00";
-        const ivaAmount = p.iva ? p.imponibile * 0.22 : 0;
-        const quotaDaPagare = (p.tipoCliente === 'Convenzionato' && !p.quotaAssociativaPagata) ? (p.quotaImporto || 25) : 0;
-        return (p.imponibile + ivaAmount + (p.costiVivi || 0) + quotaDaPagare).toFixed(2);
+        const imponibile = Number(p.imponibile || 0);
+        const ivaAmount = p.iva ? imponibile * 0.22 : 0;
+        const quotaDaPagare = (p.tipoCliente === 'Convenzionato' && !p.quotaAssociativaPagata) ? Number(p.quotaImporto || 25) : 0;
+        return (imponibile + ivaAmount + Number(p.costiVivi || 0) + quotaDaPagare).toFixed(2);
       };
 
-      const isFirenze = currentProfile === 'mio_studio';
-      const isBrindisi = currentProfile === 'brindisi';
-      const isClienteIsolato = currentProfile === 'cliente_isolato';
-
-      const praticheVisibili = isClienteIsolato 
-        ? pratiche.filter(p => p.clientId === "RSSMRA80A01D612K") 
+      const praticheVisibili = isClienteIsolato
+        ? pratiche.filter(p => p.clientId === "RSSMRA80A01D612K")
         : pratiche;
 
       return (
         <div style={{ fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif', backgroundColor: '#f4f6f9', minHeight: '100vh', color: '#333' }}>
-          
+
           {/* HEADER SUPERIORE */}
           <header style={{ backgroundColor: isBrindisi ? '#7c2d12' : isClienteIsolato ? '#0f766e' : '#1e293b', color: '#fff', padding: '15px 30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', flexWrap: 'wrap', gap: '10px' }}>
             <div>
@@ -318,12 +347,12 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 </span>
               </h2>
             </div>
-            
+
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
               <div style={{ background: 'rgba(255,255,255,0.1)', padding: '6px 12px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '13px', color: '#e2e8f0' }}>Vista:</span>
-                <select 
-                  value={currentProfile} 
+                <select
+                  value={currentProfile}
                   onChange={(e) => {
                     setCurrentProfile(e.target.value);
                     setActiveTab('dashboard');
@@ -339,7 +368,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
               </div>
 
               {isBrindisi && (
-                <button 
+                <button
                   onClick={() => setShowBrindisiTariffModal(true)}
                   style={{ background: '#ea580c', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
                 >
@@ -348,7 +377,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
               )}
 
               {isFirenze && (
-                <button 
+                <button
                   onClick={() => setShowCassaModal(true)}
                   style={{ background: '#d97706', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
                 >
@@ -357,7 +386,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
               )}
 
               {!isClienteIsolato && (
-                <button 
+                <button
                   onClick={() => setShowVaultModal(true)}
                   style={{ background: '#059669', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
                 >
@@ -390,7 +419,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
           {/* CONTENUTO PRINCIPALE */}
           <main style={{ padding: '30px', maxWidth: '1400px', margin: '0 auto' }}>
-            
+
             {isClienteIsolato ? (
               <div style={{ maxWidth: '750px', margin: '0 auto' }}>
                 {!sessioneSbloccata ? (
@@ -402,15 +431,15 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                       Inserisci il <strong>Codice PIN a 6 cifre</strong> ricevuto via SMS/WhatsApp o stampato sul foglio dello studio (per provare scrivi <code>123456</code>):
                     </p>
                     <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '15px' }}>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         maxLength={6}
                         value={otpInserito}
                         onChange={(e) => setOtpInserito(e.target.value)}
                         placeholder="Es. 123456"
                         style={{ padding: '12px', fontSize: '18px', textAlign: 'center', letterSpacing: '4px', width: '180px', borderRadius: '6px', border: '2px solid #0d9488' }}
                       />
-                      <button 
+                      <button
                         onClick={() => {
                           if (otpInserito.length === 6) setSessioneSbloccata(true);
                           else alert('Inserisci un codice PIN a 6 cifre (es. 123456)');
@@ -510,56 +539,51 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                               </td>
                               <td style={{ padding: '12px 15px' }}>
                                 <div style={{ fontWeight: '600' }}>{p.cliente}</div>
-                                <span style={{ 
-                                  fontSize: '11px', 
-                                  padding: '2px 6px', 
-                                  borderRadius: '4px', 
-                                  background: p.tipoCliente === 'Convenzionato' ? '#fef3c7' : '#e0f2fe', 
-                                  color: p.tipoCliente === 'Convenzionato' ? '#92400e' : '#0369a1',
-                                  fontWeight: '600'
+                                <span style={{
+                                  fontSize: '11px',
+                                  padding: '2px 6px',
+                                  borderRadius: '4px',
+                                  background: p.tipoCliente === 'Convenzionato' ? '#dcfce7' : '#f1f5f9',
+                                  color: p.tipoCliente === 'Convenzionato' ? '#166534' : '#475569',
+                                  fontWeight: 'bold'
                                 }}>
-                                  {p.tipoCliente === 'Convenzionato' ? 'Convenzionato (€ 25)' : 'Occasionale'}
+                                  {p.tipoCliente}
                                 </span>
                               </td>
                               <td style={{ padding: '12px 15px' }}>
-                                <div style={{ fontWeight: '500' }}>{p.servizio}</div>
-                                <div style={{ fontSize: '12px', color: '#059669' }}>{p.stato}</div>
+                                <div style={{ fontWeight: '600', color: '#1e293b' }}>{p.servizio}</div>
+                                <div style={{ fontSize: '12px', color: '#64748b' }}>{p.stato}</div>
                                 {p.promemoria && (
-                                  <div style={{ marginTop: '5px', background: '#fef3c7', color: '#92400e', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <div style={{ marginTop: '6px', background: '#fef9c3', border: '1px solid #fde047', padding: '6px 10px', borderRadius: '6px', fontSize: '12px', color: '#854d0e', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
                                     <span>⏰ {p.promemoria}</span>
-                                    <button onClick={() => interrompiPromemoria(p.id)} style={{ background: '#b45309', color: '#fff', border: 'none', borderRadius: '3px', padding: '2px 6px', fontSize: '10px', cursor: 'pointer', marginLeft: '8px' }}>
-                                      Interrompi ✖
+                                    <button onClick={() => interrompiPromemoria(p.id)} style={{ background: '#ca8a04', color: '#fff', border: 'none', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}>
+                                      Sblocca
                                     </button>
                                   </div>
                                 )}
                               </td>
-                              
                               {isFirenze && (
-                                <td style={{ padding: '12px 15px', fontWeight: '600' }}>
-                                  {p.sedeCompetenza === 'Brindisi' ? (
-                                    <span style={{ fontSize: '12px', color: '#64748b', fontStyle: 'italic' }}>Listino Brindisi</span>
-                                  ) : p.soloDocumenti ? (
-                                    <span style={{ background: '#dcfce7', color: '#166534', padding: '3px 8px', borderRadius: '4px', fontSize: '12px' }}>
-                                      GRATUITO (Solo Documenti)
-                                    </span>
-                                  ) : (
-                                    <>
-                                      <div>€ {calcolaTotale(p)}</div>
-                                      <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 'normal' }}>
-                                        {p.iva ? `Imp. €${p.imponibile} + IVA 22%` : 'Esente IVA'}
-                                        {p.tipoCliente === 'Convenzionato' && !p.quotaAssociativaPagata && (
-                                          <span style={{ display: 'block', color: '#b45309', fontWeight: '600' }}>+ € 25,00 Quota Associativa</span>
-                                        )}
-                                      </div>
-                                    </>
-                                  )}
+                                <td style={{ padding: '12px 15px', fontWeight: '700', color: '#0f172a' }}>
+                                  € {calcolaTotale(p)}
                                 </td>
                               )}
-
                               <td style={{ padding: '12px 15px', textAlign: 'center' }}>
-                                <button onClick={() => { setSelectedPratica(p); setShowModal(true); }} style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}>
-                                  Gestisci & Inoltra ⚡
-                                </button>
+                                <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                  <button
+                                    onClick={() => { setSelectedPratica(p); setShowModal(true); }}
+                                    style={{ background: '#e2e8f0', color: '#1e293b', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}
+                                  >
+                                    Dettagli / Inoltra
+                                  </button>
+                                  {p.servizio.includes('Successione') && !p.preventivoAccettato && (
+                                    <button
+                                      onClick={() => approvaPreventivoSuccessione(p.id)}
+                                      style={{ background: '#16a34a', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}
+                                    >
+                                      Approva Preventivo
+                                    </button>
+                                  )}
+                                </div>
                               </td>
                             </tr>
                           ))}
@@ -571,33 +595,27 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
                 {activeTab === 'tariffario' && (
                   <div style={{ background: '#fff', padding: '25px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                    <h3 style={{ margin: '0 0 10px 0', color: '#1e293b' }}>
-                      {isBrindisi ? "⚙️ Tariffario Autonomo Sede Brindisi" : "📋 Tariffario Completo Sede Centrale Firenze"}
+                    <h3 style={{ marginTop: 0 }}>
+                      {isBrindisi ? "Listino Autonomo Sede Brindisi" : "Tariffario Generale Studio Firenze"}
                     </h3>
-                    <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '20px' }}>
-                      {isBrindisi 
-                        ? "Listino prezzi autonomo configurato dalla sede di Brindisi." 
-                        : "Listino ufficiale di Firenze. Include la quota associativa convenzionati (€ 25,00) e la gratuità totale per il solo inserimento documenti."}
-                    </p>
-
-                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
                       <thead>
-                        <tr style={{ background: isBrindisi ? '#ea580c' : '#1e293b', color: '#fff' }}>
-                          <th style={{ padding: '10px' }}>Area</th>
-                          <th style={{ padding: '10px' }}>Servizio</th>
-                          {!isBrindisi && <th style={{ padding: '10px' }}>Tariffa Base / CAF</th>}
-                          <th style={{ padding: '10px' }}>Tariffa Studio</th>
-                          <th style={{ padding: '10px' }}>Regime IVA</th>
+                        <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', color: '#475569' }}>
+                          <th style={{ padding: '12px' }}>Area</th>
+                          <th style={{ padding: '12px' }}>Servizio</th>
+                          {!isBrindisi && <th style={{ padding: '12px' }}>Base / CAF</th>}
+                          <th style={{ padding: '12px' }}>Tariffa</th>
+                          <th style={{ padding: '12px' }}>Regime IVA</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {(isBrindisi ? tariffarioBrindisi : tariffarioFirenze).map((t, idx) => (
-                          <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0', background: idx % 2 === 0 ? '#fff' : '#f8fafc' }}>
-                            <td style={{ padding: '10px', fontWeight: 'bold', color: isBrindisi ? '#ea580c' : '#2563eb' }}>{t.area}</td>
-                            <td style={{ padding: '10px', fontWeight: '600' }}>{t.servizio}</td>
-                            {!isBrindisi && <td style={{ padding: '10px' }}>{t.base}</td>}
-                            <td style={{ padding: '10px', fontWeight: 'bold', color: '#059669' }}>{t.studio}</td>
-                            <td style={{ padding: '10px' }}>{t.iva}</td>
+                        {(isBrindisi ? tariffarioBrindisi : tariffarioFirenze).map((item, idx) => (
+                          <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            <td style={{ padding: '10px 12px', fontWeight: '600', color: '#475569' }}>{item.area}</td>
+                            <td style={{ padding: '10px 12px' }}>{item.servizio}</td>
+                            {!isBrindisi && <td style={{ padding: '10px 12px' }}>{item.base}</td>}
+                            <td style={{ padding: '10px 12px', fontWeight: '600' }}>{item.studio}</td>
+                            <td style={{ padding: '10px 12px', color: '#64748b' }}>{item.iva}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -606,211 +624,76 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 )}
 
                 {activeTab === 'isee_check' && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                    <div style={{ background: '#fff', padding: '25px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                      <h3 style={{ margin: '0 0 10px 0' }}>🔍 Verifica Preventiva Codice Fiscale ISEE</h3>
-                      <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '15px' }}>Verifica subito se il cliente ha già fatto un ISEE (altro CAF, INPS o SPID) o richiede una modifica (€ 20,00).</p>
-                      <input 
-                        type="text" 
-                        maxLength={16}
-                        value={cfInput}
-                        onChange={(e) => handleCheckCF(e.target.value)}
-                        placeholder="Inserisci Codice Fiscale (16 caratteri)..." 
-                        style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '14px', marginBottom: '15px', boxSizing: 'border-box' }}
-                      />
-                      {iseeAlert ? (
-                        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', padding: '15px', borderRadius: '6px', fontSize: '13px', fontWeight: '600' }}>
-                          {iseeAlert}
-                        </div>
-                      ) : (
-                        <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#166534', padding: '15px', borderRadius: '6px', fontSize: '13px' }}>
-                          ✅ Nessuna DSU precedente rilevata. Prima presentazione gratuita (se convenzionata).
-                        </div>
-                      )}
-                    </div>
-
-                    <div style={{ background: '#fff', padding: '25px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                      <h3 style={{ margin: '0 0 10px 0' }}>📄 Calcolo Estratto Conto Contributivo</h3>
-                      <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '15px' }}>Gratuito se la pratica previdenziale viene svolta con lo studio.</p>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', fontWeight: '600', marginBottom: '15px', cursor: 'pointer' }}>
-                        <input 
-                          type="checkbox" 
-                          checked={praticaPrevidenzialeAbbinata} 
-                          onChange={(e) => setPraticaPrevidenzialeAbbinata(e.target.checked)} 
-                        />
-                        Il cliente fa la pratica previdenziale con noi
-                      </label>
-                      {isFirenze && (
-                        <div style={{ background: '#f8fafc', padding: '15px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                          <p style={{ margin: 0, fontSize: '14px' }}>
-                            <strong>Tariffa Applicata:</strong> {praticaPrevidenzialeAbbinata ? <span style={{ color: '#059669' }}>GRATUITO (€ 0,00)</span> : <span>€ 15,00 (Base) / € 20,00 + IVA (Studio)</span>}
-                          </p>
-                        </div>
-                      )}
-                    </div>
+                  <div style={{ background: '#fff', padding: '25px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', maxWidth: '700px' }}>
+                    <h3 style={{ marginTop: 0 }}>Verifica Codice Fiscale DSU / ISEE</h3>
+                    <input
+                      type="text"
+                      maxLength={16}
+                      value={cfInput}
+                      onChange={(e) => handleCheckCF(e.target.value)}
+                      placeholder="Inserisci Codice Fiscale (16 caratteri)..."
+                      style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '15px', textTransform: 'uppercase', boxSizing: 'border-box' }}
+                    />
+                    {iseeAlert && (
+                      <div style={{ marginTop: '15px', padding: '12px', background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '6px', color: '#92400e', fontSize: '14px' }}>
+                        {iseeAlert}
+                      </div>
+                    )}
                   </div>
                 )}
 
                 {activeTab === 'immigrazione' && (
-                  <div style={{ background: '#fff', padding: '25px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                    <h3 style={{ margin: '0 0 10px 0' }}>🌍 Reparto Immigrazione - Permesso di Soggiorno</h3>
-                    <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '20px' }}>Onorario studio € 250,00 + IVA separato da bollettino (€ 30,46), marca da bollo (€ 16,00), contributo ministeriale (€ 50/100/150) e spedizione (€ 50,00).</p>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px' }}>
-                      <div>
-                        <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '8px' }}>Fascia Contributo Ministeriale:</label>
-                        <select 
-                          value={contributoImmigrazione} 
-                          onChange={(e) => setContributoImmigrazione(Number(e.target.value))}
-                          style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #cbd5e1', marginBottom: '15px' }}
-                        >
-                          <option value={50}>€ 50,00 - Soggiorni brevi</option>
-                          <option value={100}>€ 100,00 - Soggiorni 1-2 anni</option>
-                          <option value={150}>€ 150,00 - Lunghi periodi / CE</option>
-                        </select>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', cursor: 'pointer' }}>
-                          <input type="checkbox" checked={includeKitCartaceo} onChange={(e) => setIncludeKitCartaceo(e.target.checked)} />
-                          Aggiungi costo acquisto Kit Postale cartaceo (€ 1,76)
-                        </label>
-                      </div>
-                      {isFirenze && (
-                        <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
-                          <h4 style={{ margin: '0 0 10px 0' }}>Riepilogo Economico (Riservato Firenze)</h4>
-                          <p style={{ margin: '4px 0', fontSize: '13px' }}>• Onorario Studio: <strong>€ 250,00 + IVA 22% (€ 305,00)</strong></p>
-                          <p style={{ margin: '4px 0', fontSize: '13px' }}>• Bollettino PSE (€ 30,46) + Marca da Bollo (€ 16,00) + Spedizione (€ 50,00)</p>
-                          <p style={{ margin: '4px 0', fontSize: '13px' }}>• Contributo Ministeriale: <strong>€ {contributoImmigrazione.toFixed(2)}</strong></p>
-                          {includeKitCartaceo && <p style={{ margin: '4px 0', fontSize: '13px' }}>• Busta Kit Cartaceo: <strong>€ 1,76</strong></p>}
-                          <hr style={{ margin: '10px 0' }} />
-                          <p style={{ margin: 0, fontSize: '16px', fontWeight: 'bold', color: '#059669' }}>
-                            Totale Complessivo: € {(305 + 30.46 + 16 + contributoImmigrazione + 50 + (includeKitCartaceo ? 1.76 : 0)).toFixed(2)}
-                          </p>
-                        </div>
-                      )}
+                  <div style={{ background: '#fff', padding: '25px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', maxWidth: '700px' }}>
+                    <h3 style={{ marginTop: 0 }}>Calcolo Pratica Immigrazione</h3>
+                    <label style={{ display: 'block', marginBottom: '10px', fontSize: '14px' }}>
+                      Contributo / Costi vivi (€):
+                      <input
+                        type="number"
+                        value={contributoImmigrazione}
+                        onChange={(e) => setContributoImmigrazione(Number(e.target.value) || 0)}
+                        style={{ marginLeft: '10px', padding: '6px 10px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                      />
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', fontSize: '14px' }}>
+                      <input type="checkbox" checked={includeKitCartaceo} onChange={(e) => setIncludeKitCartaceo(e.target.checked)} />
+                      Kit postale / marca da bollo
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px', fontSize: '14px' }}>
+                      <input type="checkbox" checked={praticaPrevidenzialeAbbinata} onChange={(e) => setPraticaPrevidenzialeAbbinata(e.target.checked)} />
+                      Pratica previdenziale abbinata
+                    </label>
+                    <div style={{ fontWeight: 'bold', fontSize: '16px', color: '#1e293b' }}>
+                      Totale indicativo: € {(250 + contributoImmigrazione + (includeKitCartaceo ? 46.46 : 0) + (praticaPrevidenzialeAbbinata ? 30 : 0)).toFixed(2)}
                     </div>
                   </div>
                 )}
               </>
             )}
-
           </main>
 
-          {/* MODALE GESTIONE PRATICA & SCAMBIO RECIPROCO INTER-SEDE */}
+          {/* MODALE DETTAGLI / INOLTRA PRATICA */}
           {showModal && selectedPratica && (
-            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: '0', background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-              <div style={{ background: '#fff', padding: '30px', borderRadius: '8px', width: '650px', maxWidth: '90%', maxHeight: '90vh', overflowY: 'auto' }}>
-                <h3 style={{ margin: '0 0 10px 0' }}>Gestione Pratica: {selectedPratica.servizio}</h3>
-                <p style={{ color: '#64748b', fontSize: '14px', marginBottom: '15px' }}>
-                  Cliente: <strong>{selectedPratica.cliente}</strong> | Sede Competenza: <strong style={{ color: '#2563eb' }}>{selectedPratica.sedeCompetenza}</strong>
-                </p>
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
+              <div style={{ background: '#fff', padding: '25px', borderRadius: '8px', maxWidth: '480px', width: '100%' }}>
+                <h3 style={{ marginTop: 0 }}>Pratica: {selectedPratica.cliente}</h3>
+                <p style={{ fontSize: '14px', margin: '6px 0' }}><strong>Servizio:</strong> {selectedPratica.servizio}</p>
+                <p style={{ fontSize: '14px', margin: '6px 0' }}><strong>Sede attuale:</strong> {selectedPratica.sedeCompetenza}</p>
+                <p style={{ fontSize: '14px', margin: '6px 0' }}><strong>Stato:</strong> {selectedPratica.stato}</p>
+                <p style={{ fontSize: '14px', margin: '6px 0 18px 0' }}><strong>Importo totale:</strong> € {calcolaTotale(selectedPratica)}</p>
 
-                <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', padding: '15px', borderRadius: '6px', marginBottom: '20px' }}>
-                  <h4 style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#1e293b' }}>🔄 Scambio / Inoltro Pratica tra Sedi:</h4>
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    {selectedPratica.sedeCompetenza !== 'Firenze' && (
-                      <button onClick={() => spostaSedePratica(selectedPratica.id, 'Firenze')} style={{ flex: 1, background: '#2563eb', color: '#fff', border: 'none', padding: '8px', borderRadius: '4px', fontWeight: '600', cursor: 'pointer', fontSize: '12px' }}>
-                        📤 Inoltra a Sede Firenze
-                      </button>
-                    )}
-                    {selectedPratica.sedeCompetenza !== 'Brindisi' && (
-                      <button onClick={() => spostaSedePratica(selectedPratica.id, 'Brindisi')} style={{ flex: 1, background: '#ea580c', color: '#fff', border: 'none', padding: '8px', borderRadius: '4px', fontWeight: '600', cursor: 'pointer', fontSize: '12px' }}>
-                        📤 Inoltra a Sede Brindisi
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {selectedPratica.soloDocumenti ? (
-                  <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '15px', borderRadius: '6px', marginBottom: '20px', fontSize: '13px', color: '#166534' }}>
-                    📂 <strong>Solo Inserimento Documenti:</strong> Operazione gratuita (€ 0,00).
-                  </div>
-                ) : (
-                  <>
-                    {selectedPratica.servizio.includes("Successione") && !selectedPratica.preventivoAccettato && isFirenze && (
-                      <div style={{ background: '#fef3c7', border: '1px solid #fde68a', padding: '15px', borderRadius: '6px', marginBottom: '20px' }}>
-                        <h4 style={{ margin: '0 0 8px 0', color: '#92400e', fontSize: '13px' }}>⏳ Preventivo in attesa di accettazione cliente</h4>
-                        <button onClick={() => approvaPreventivoSuccessione(selectedPratica.id)} style={{ background: '#d97706', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: '600', fontSize: '12px' }}>
-                          ✅ Segna Preventivo Accettato & Sblocca Pagamento
-                        </button>
-                      </div>
-                    )}
-
-                    {(!selectedPratica.servizio.includes("Successione") || selectedPratica.preventivoAccettato) && (
-                      <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', padding: '15px', borderRadius: '6px', marginBottom: '20px' }}>
-                        <h4 style={{ fontSize: '13px', margin: '0 0 8px 0', color: '#1e40af' }}>🏢 Incasso Studio (Contanti o POS) / Link Digitali:</h4>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
-                          <button onClick={() => alert('Incasso Contanti registrato nella cassa della sede!')} style={{ background: '#059669', color: '#fff', border: 'none', padding: '8px', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '12px' }}>
-                            💵 Incassa in Contanti
-                          </button>
-                          <button onClick={() => alert('Transazione POS registrata!')} style={{ background: '#0284c7', color: '#fff', border: 'none', padding: '8px', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '12px' }}>
-                            💳 Incassa con POS Studio
-                          </button>
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '6px' }}>
-                          <button onClick={() => alert('Coordinate Bonifico inviate!')} style={{ background: '#fff', border: '1px solid #cbd5e1', padding: '6px', borderRadius: '4px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>🏦 Bonifico</button>
-                          <button onClick={() => alert('Link PayPal generato!')} style={{ background: '#fff', border: '1px solid #bfdbfe', padding: '6px', borderRadius: '4px', fontSize: '11px', fontWeight: '600', color: '#1d4ed8', cursor: 'pointer' }}>🅿️ PayPal</button>
-                          <button onClick={() => alert('Link Scalapay generato!')} style={{ background: '#fff', border: '1px solid #fde68a', padding: '6px', borderRadius: '4px', fontSize: '11px', fontWeight: '600', color: '#92400e', cursor: 'pointer' }}>💳 Scalapay</button>
-                          <button onClick={() => alert('Link Klarna generato!')} style={{ background: '#fff', border: '1px solid #fbcfe8', padding: '6px', borderRadius: '4px', fontSize: '11px', fontWeight: '600', color: '#be185d', cursor: 'pointer' }}>🛍️ Klarna</button>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <button onClick={() => setShowModal(false)} style={{ background: '#cbd5e1', border: 'none', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: '600' }}>Chiudi</button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* MODALE PERSONALIZZAZIONE TARIFFARIO BRINDISI */}
-          {showBrindisiTariffModal && isBrindisi && (
-            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: '0', background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-              <div style={{ background: '#fff', padding: '30px', borderRadius: '8px', width: '600px', maxWidth: '90%' }}>
-                <h3 style={{ margin: '0 0 10px 0', color: '#ea580c' }}>⚙️ Personalizza il Tuo Tariffario (Sede Brindisi)</h3>
-                <div style={{ background: '#f8fafc', padding: '15px', borderRadius: '6px', border: '1px solid #e2e8f0', marginBottom: '20px' }}>
-                  {tariffarioBrindisi.map((t, idx) => (
-                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', fontSize: '13px' }}>
-                      <span><strong>{t.servizio}</strong></span>
-                      <input 
-                        type="text" 
-                        value={t.studio} 
-                        onChange={(e) => {
-                          const updated = [...tariffarioBrindisi];
-                          updated[idx].studio = e.target.value;
-                          setTariffarioBrindisi(updated);
-                        }}
-                        style={{ padding: '6px', width: '100px', borderRadius: '4px', border: '1px solid #cbd5e1', fontWeight: 'bold', textAlign: 'center' }} 
-                      />
-                    </div>
-                  ))}
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <button onClick={() => setShowBrindisiTariffModal(false)} style={{ background: '#ea580c', color: '#fff', border: 'none', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: '600' }}>
-                    Salva Modifiche
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '15px' }}>
+                  <button onClick={() => spostaSedePratica(selectedPratica.id, 'Firenze')} style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
+                    Inoltra a Firenze
+                  </button>
+                  <button onClick={() => spostaSedePratica(selectedPratica.id, 'Brindisi')} style={{ background: '#ea580c', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
+                    Inoltra a Brindisi
                   </button>
                 </div>
-              </div>
-            </div>
-          )}
 
-          {/* MODALE GENERATORE LINK OTP / QR CODE NO-SPID */}
-          {showNoSpidModal && (
-            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: '0', background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-              <div style={{ background: '#fff', padding: '30px', borderRadius: '8px', width: '550px', maxWidth: '90%' }}>
-                <h3 style={{ margin: '0 0 10px 0', color: '#0f766e' }}>📲 Accesso Documenti Isolato (Senza SPID / CIE)</h3>
-                <input type="text" value={clienteNoSpidName} onChange={(e) => setClienteNoSpidName(e.target.value)} placeholder="Nome e Cognome Cliente..." style={{ width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
-                <input type="text" value={clienteNoSpidPhone} onChange={(e) => setClienteNoSpidPhone(e.target.value)} placeholder="Cellulare per SMS / WhatsApp..." style={{ width: '100%', padding: '10px', marginBottom: '15px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
-                <button onClick={generaAccessoSenzaSpid} style={{ width: '100%', background: '#0d9488', color: '#fff', border: 'none', padding: '12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '15px' }}>
-                  🔐 Genera Link Personale + PIN OTP
-                </button>
-                {generatedToken && (
-                  <div style={{ background: '#f0fdfa', border: '1px solid #99f6e4', padding: '15px', borderRadius: '6px', marginBottom: '15px', fontSize: '13px' }}>
-                    <p style={{ margin: '4px 0' }}>🔗 Link: <code>{generatedToken.link}</code></p>
-                    <p style={{ margin: '4px 0' }}>🔑 PIN OTP: <strong>{generatedToken.pin}</strong></p>
-                  </div>
-                )}
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <button onClick={() => setShowNoSpidModal(false)} style={{ background: '#cbd5e1', border: 'none', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: '600' }}>Chiudi</button>
+                <div style={{ textAlign: 'right' }}>
+                  <button onClick={() => setShowModal(false)} style={{ background: '#cbd5e1', border: 'none', padding: '8px 14px', borderRadius: '4px', cursor: 'pointer' }}>
+                    Chiudi
+                  </button>
                 </div>
               </div>
             </div>
@@ -818,41 +701,54 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
           {/* MODALE NUOVA PRATICA */}
           {showSportelloModal && (
-            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: '0', background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-              <div style={{ background: '#fff', padding: '30px', borderRadius: '8px', width: '520px', maxWidth: '90%' }}>
-                <h3 style={{ margin: '0 0 15px 0' }}>+ Nuova Pratica / Inserimento</h3>
-                <input type="text" value={nuovoClienteNome} onChange={(e) => setNuovoClienteNome(e.target.value)} placeholder="Nome e Cognome Cliente..." style={{ width: '100%', padding: '8px', marginBottom: '12px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
-                <input type="text" value={nuovoClienteCf} onChange={(e) => setNuovoClienteCf(e.target.value)} placeholder="Codice Fiscale (Isolamento GDPR)..." style={{ width: '100%', padding: '8px', marginBottom: '12px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
-                
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
+              <div style={{ background: '#fff', padding: '25px', borderRadius: '8px', maxWidth: '480px', width: '100%' }}>
+                <h3 style={{ marginTop: 0 }}>+ Nuova Pratica / Inserimento</h3>
+
+                <input
+                  type="text"
+                  value={nuovoClienteNome}
+                  onChange={(e) => setNuovoClienteNome(e.target.value)}
+                  placeholder="Nome e Cognome Cliente..."
+                  style={{ width: '100%', padding: '8px', marginBottom: '10px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                />
+
+                <input
+                  type="text"
+                  value={nuovoClienteCf}
+                  onChange={(e) => setNuovoClienteCf(e.target.value.toUpperCase())}
+                  placeholder="Codice Fiscale (Isolamento GDPR)..."
+                  style={{ width: '100%', padding: '8px', marginBottom: '10px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                />
+
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px' }}>Tipologia Cliente:</label>
-                <select 
-                  value={nuovoTipoCliente} 
-                  onChange={(e) => {
-                    setNuovoTipoCliente(e.target.value);
-                    if (e.target.value === 'Convenzionato') setAggiungiQuotaAssociativa(true);
-                    else setAggiungiQuotaAssociativa(false);
-                  }}
-                  style={{ width: '100%', padding: '8px', marginBottom: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                <select
+                  value={nuovoTipoCliente}
+                  onChange={(e) => setNuovoTipoCliente(e.target.value)}
+                  style={{ width: '100%', padding: '8px', marginBottom: '10px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                 >
                   <option value="Occasionale">Cliente Occasionale (Studio)</option>
-                  <option value="Convenzionato">Cliente Convenzionato (Quota Associativa € 25,00)</option>
+                  <option value="Convenzionato">Cliente Convenzionato</option>
                 </select>
 
-                {nuovoTipoCliente === 'Convenzionato' && isFirenze && (
-                  <div style={{ background: '#fef3c7', padding: '10px', borderRadius: '4px', marginBottom: '12px', fontSize: '12px', color: '#92400e' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: '600' }}>
-                      <input type="checkbox" checked={aggiungiQuotaAssociativa} onChange={(e) => setAggiungiQuotaAssociativa(e.target.checked)} />
-                      Associa cliente con Quota Annuale di € 25,00
-                    </label>
-                  </div>
+                {nuovoTipoCliente === 'Convenzionato' && (
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', fontSize: '13px' }}>
+                    <input type="checkbox" checked={aggiungiQuotaAssociativa} onChange={(e) => setAggiungiQuotaAssociativa(e.target.checked)} />
+                    Includi Quota Associativa (€ 25,00)
+                  </label>
                 )}
 
-                <div style={{ background: '#f0fdf4', padding: '10px', borderRadius: '4px', marginBottom: '12px', fontSize: '12px', color: '#166534' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: '600' }}>
-                    <input type="checkbox" checked={soloCaricamentoDocumenti} onChange={(e) => setSoloCaricamentoDocumenti(e.target.checked)} />
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>
+                    <input
+                      type="checkbox"
+                      checked={soloCaricamentoDocumenti}
+                      onChange={(e) => setSoloCaricamentoDocumenti(e.target.checked)}
+                    />
                     Solo Inserimento / Invio Documenti (Gratuito € 0,00)
                   </label>
                 </div>
+
                 {!soloCaricamentoDocumenti && (
                   <>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px' }}>Tipo di Pratica / Servizio:</label>
@@ -861,44 +757,86 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                       onChange={(e) => setNuovoServizio(e.target.value)}
                       style={{ width: '100%', padding: '8px', marginBottom: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                     >
-                      <option value="Modello 730 Singolo">Modello 730 Singolo</option>
-                      <option value="ISEE / DSU Ordinario">ISEE / DSU Ordinario</option>
-                      <option value="Dichiarazione di Successione + Voltura">Dichiarazione di Successione + Voltura</option>
-                      <option value="Pratica Previdenziale / Patronato">Pratica Previdenziale / Patronato</option>
-                      <option value="Cedolino / Contratto Lavoro">Cedolino / Contratto Lavoro</option>
-                      <option value="IMU / Visure / Pratica Fiscale">IMU / Visure / Pratica Fiscale</option>
+                      <option value="Modello 730 Singolo">Modello 730 Singolo (€ 70,00)</option>
+                      <option value="ISEE / DSU Ordinario">ISEE / DSU Ordinario (€ 20,00)</option>
+                      <option value="Dichiarazione di Successione + Voltura">Dichiarazione di Successione + Voltura (€ 550,00)</option>
+                      <option value="Pratica Previdenziale / Patronato">Pratica Previdenziale / Patronato (€ 30,00)</option>
+                      <option value="Cedolino / Contratto Lavoro">Cedolino / Contratto Lavoro (€ 25,00)</option>
+                      <option value="IMU / Visure / Pratica Fiscale">IMU / Visure / Pratica Fiscale (€ 40,00)</option>
                     </select>
-                  </>
-                )}
-                {!soloCaricamentoDocumenti && (
-                  <>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px' }}>Tipo di Pratica / Servizio:</label>
+
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px' }}>Canale / Regime IVA:</label>
                     <select
-                      value={nuovoServizio}
-                      onChange={(e) => setNuovoServizio(e.target.value)}
+                      value={nuovoCanaleIva}
+                      onChange={(e) => setNuovoCanaleIva(e.target.value)}
                       style={{ width: '100%', padding: '8px', marginBottom: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                     >
-                      <option value="Modello 730 Singolo">Modello 730 Singolo</option>
-                      <option value="ISEE / DSU Ordinario">ISEE / DSU Ordinario</option>
-                      <option value="Dichiarazione di Successione + Voltura">Dichiarazione di Successione + Voltura</option>
-                      <option value="Pratica Previdenziale / Patronato">Pratica Previdenziale / Patronato</option>
-                      <option value="Cedolino / Contratto Lavoro">Cedolino / Contratto Lavoro</option>
-                      <option value="IMU / Visure / Pratica Fiscale">IMU / Visure / Pratica Fiscale</option>
+                      <option value="studio">Canale Studio Commercialista (+ IVA 22%)</option>
+                      <option value="caf">Canale Esclusivo CAF (Esente IVA)</option>
                     </select>
                   </>
-                )}
-                {!soloCaricamentoDocumenti && (
-                  <select value={nuovoCanaleIva} onChange={(e) => setNuovoCanaleIva(e.target.value)} style={{ width: '100%', padding: '8px', marginBottom: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }}>
-                    <option value="studio">Canale Studio Commercialista (+ IVA 22%)</option>
-                    <option value="caf">Canale Esclusivo CAF (Esente IVA)</option>
-                  </select>
                 )}
 
-                <input type="text" value={nuovoPromemoria} onChange={(e) => setNuovoPromemoria(e.target.value)} placeholder="Nota promemoria Standby (opzionale)..." style={{ width: '100%', padding: '8px', marginBottom: '15px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+                <input
+                  type="text"
+                  value={nuovoPromemoria}
+                  onChange={(e) => setNuovoPromemoria(e.target.value)}
+                  placeholder="Nota promemoria Standby (opzionale)..."
+                  style={{ width: '100%', padding: '8px', marginBottom: '12px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                />
+
+                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '10px 12px', marginBottom: '15px', fontSize: '13px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Imponibile: <strong>€ {calcolaImponibileNuovaPratica().toFixed(2)}</strong></span>
+                  <span>Totale stimato: <strong>€ {calcolaAnteprimaTotaleNuovaPratica()}</strong></span>
+                </div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                  <button onClick={() => setShowSportelloModal(false)} style={{ background: '#cbd5e1', border: 'none', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer' }}>Annulla</button>
-                  <button onClick={aggiungiNuovaPratica} style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: '600' }}>Salva Pratica</button>
+                  <button onClick={() => setShowSportelloModal(false)} style={{ background: '#cbd5e1', border: 'none', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer' }}>
+                    Annulla
+                  </button>
+                  <button onClick={aggiungiNuovaPratica} style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: '600' }}>
+                    Salva Pratica
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* MODALE LINK / QR NO-SPID */}
+          {showNoSpidModal && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
+              <div style={{ background: '#fff', padding: '25px', borderRadius: '8px', maxWidth: '460px', width: '100%' }}>
+                <h3 style={{ marginTop: 0 }}>📲 Genera Accesso Protetto No-SPID</h3>
+                <input
+                  type="text"
+                  value={clienteNoSpidName}
+                  onChange={(e) => setClienteNoSpidName(e.target.value)}
+                  placeholder="Nome e Cognome Assistito..."
+                  style={{ width: '100%', padding: '8px', marginBottom: '10px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                />
+                <input
+                  type="text"
+                  value={clienteNoSpidPhone}
+                  onChange={(e) => setClienteNoSpidPhone(e.target.value)}
+                  placeholder="Cellulare / WhatsApp..."
+                  style={{ width: '100%', padding: '8px', marginBottom: '12px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                />
+                <button onClick={generaAccessoSenzaSpid} style={{ background: '#0d9488', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '4px', cursor: 'pointer', fontWeight: '600' }}>
+                  Genera Link & PIN
+                </button>
+
+                {generatedToken && (
+                  <div style={{ marginTop: '14px', padding: '12px', background: '#f0fdfa', borderRadius: '6px', fontSize: '13px' }}>
+                    <div><strong>Cliente:</strong> {generatedToken.cliente}</div>
+                    <div><strong>PIN OTP:</strong> {generatedToken.pin}</div>
+                    <div><strong>Link:</strong> {generatedToken.link}</div>
+                  </div>
+                )}
+
+                <div style={{ textAlign: 'right', marginTop: '15px' }}>
+                  <button onClick={() => setShowNoSpidModal(false)} style={{ background: '#cbd5e1', border: 'none', padding: '8px 14px', borderRadius: '4px', cursor: 'pointer' }}>
+                    Chiudi
+                  </button>
                 </div>
               </div>
             </div>
@@ -906,47 +844,55 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
           {/* MODALE CASSA FIRENZE */}
           {showCassaModal && isFirenze && (
-            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: '0', background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-              <div style={{ background: '#fff', padding: '30px', borderRadius: '8px', width: '500px', maxWidth: '90%' }}>
-                <h3 style={{ margin: '0 0 10px 0' }}>💶 Cassa Firenze & Prima Nota</h3>
-                <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '15px' }}>Gestione incassi in contanti e POS esclusivi della sede di Firenze (invisibili a Brindisi).</p>
-                <div style={{ background: '#f8fafc', padding: '15px', borderRadius: '6px', border: '1px solid #e2e8f0', marginBottom: '15px', fontSize: '13px' }}>
-                  <p style={{ margin: '4px 0' }}>💵 <strong>Incassi Contanti & Quote Associative (€ 25):</strong> € 165,00</p>
-                  <p style={{ margin: '4px 0' }}>💳 <strong>Incassi POS Studio:</strong> € 285,00</p>
-                  <p style={{ margin: '4px 0' }}>🌐 <strong>Incassi Digitali (Bonifico/PayPal/Scalapay/Klarna):</strong> € 450,00</p>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <button onClick={() => setShowCassaModal(false)} style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: '600' }}>Chiudi</button>
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
+              <div style={{ background: '#fff', padding: '25px', borderRadius: '8px', maxWidth: '450px', width: '100%' }}>
+                <h3 style={{ marginTop: 0 }}>💶 Cassa Firenze</h3>
+                <p style={{ fontSize: '14px' }}>
+                  Totale teorico pratiche attive: <strong>€ {pratiche.filter(p => p.sedeCompetenza === 'Firenze').reduce((acc, p) => acc + Number(calcolaTotale(p)), 0).toFixed(2)}</strong>
+                </p>
+                <div style={{ textAlign: 'right', marginTop: '15px' }}>
+                  <button onClick={() => setShowCassaModal(false)} style={{ background: '#cbd5e1', border: 'none', padding: '8px 14px', borderRadius: '4px', cursor: 'pointer' }}>
+                    Chiudi
+                  </button>
                 </div>
               </div>
             </div>
           )}
 
-          {/* MODALE CASSAFORTE RECIPROCA & FLUSSI QWEB / ADE */}
+          {/* MODALE CASSAFORTE */}
           {showVaultModal && (
-            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: '0', background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-              <div style={{ background: '#fff', padding: '30px', borderRadius: '8px', width: '600px', maxWidth: '90%' }}>
-                <h3 style={{ margin: '0 0 10px 0' }}>🔐 Cassaforte Credenziali & Connettori (QWeb / AdE)</h3>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px', marginBottom: '15px' }}>
-                  <thead>
-                    <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                      <th style={{ padding: '8px' }}>Sede / Ente</th>
-                      <th style={{ padding: '8px' }}>Portale / Software</th>
-                      <th style={{ padding: '8px' }}>Stato</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {credentials.map(c => (
-                      <tr key={c.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={{ padding: '8px', fontWeight: 'bold' }}>{c.sede}</td>
-                        <td style={{ padding: '8px' }}>{c.portale}</td>
-                        <td style={{ padding: '8px', color: '#059669' }}>{c.pin}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <button onClick={() => setShowVaultModal(false)} style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: '600' }}>Chiudi</button>
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
+              <div style={{ background: '#fff', padding: '25px', borderRadius: '8px', maxWidth: '520px', width: '100%' }}>
+                <h3 style={{ marginTop: 0 }}>🔐 Cassaforte & Portali Telematici</h3>
+                {credentials.map((c) => (
+                  <div key={c.id} style={{ padding: '8px 0', borderBottom: '1px solid #f1f5f9', fontSize: '13px' }}>
+                    <strong>{c.sede}</strong> — {c.portale} ({c.pin})
+                  </div>
+                ))}
+                <div style={{ textAlign: 'right', marginTop: '15px' }}>
+                  <button onClick={() => setShowVaultModal(false)} style={{ background: '#cbd5e1', border: 'none', padding: '8px 14px', borderRadius: '4px', cursor: 'pointer' }}>
+                    Chiudi
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* MODALE TARIFFARIO BRINDISI */}
+          {showBrindisiTariffModal && isBrindisi && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
+              <div style={{ background: '#fff', padding: '25px', borderRadius: '8px', maxWidth: '500px', width: '100%' }}>
+                <h3 style={{ marginTop: 0 }}>⚙️ Tariffario Sede Brindisi</h3>
+                {tariffarioBrindisi.map((t, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f1f5f9', fontSize: '13px' }}>
+                    <span>{t.servizio}</span>
+                    <strong>{t.studio}</strong>
+                  </div>
+                ))}
+                <div style={{ textAlign: 'right', marginTop: '15px' }}>
+                  <button onClick={() => setShowBrindisiTariffModal(false)} style={{ background: '#cbd5e1', border: 'none', padding: '8px 14px', borderRadius: '4px', cursor: 'pointer' }}>
+                    Chiudi
+                  </button>
                 </div>
               </div>
             </div>
