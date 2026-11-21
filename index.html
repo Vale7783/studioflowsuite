@@ -1,4 +1,4 @@
-f<!DOCTYPE html>
+ff<!DOCTYPE html>
 <html lang="it">
 <head>
   <meta charset="UTF-8" />
@@ -853,6 +853,23 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                     Solo Inserimento / Invio Documenti (Gratuito € 0,00)
                   </label>
                 </div>
+                {!soloCaricamentoDocumenti && (
+                  <>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px' }}>Tipo di Pratica / Servizio:</label>
+                    <select
+                      value={nuovoServizio}
+                      onChange={(e) => setNuovoServizio(e.target.value)}
+                      style={{ width: '100%', padding: '8px', marginBottom: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                    >
+                      <option value="Modello 730 Singolo">Modello 730 Singolo</option>
+                      <option value="ISEE / DSU Ordinario">ISEE / DSU Ordinario</option>
+                      <option value="Dichiarazione di Successione + Voltura">Dichiarazione di Successione + Voltura</option>
+                      <option value="Pratica Previdenziale / Patronato">Pratica Previdenziale / Patronato</option>
+                      <option value="Cedolino / Contratto Lavoro">Cedolino / Contratto Lavoro</option>
+                      <option value="IMU / Visure / Pratica Fiscale">IMU / Visure / Pratica Fiscale</option>
+                    </select>
+                  </>
+                )}
                 {!soloCaricamentoDocumenti && (
                   <>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px' }}>Tipo di Pratica / Servizio:</label>
