@@ -18,15 +18,22 @@
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     const { useState, useEffect } = React;
 
-    const TARIFFE_SERVIZI = {
+    constconst TARIFFE_SERVIZI = {
       "Modello 730 Singolo": 70.00,
+      "Modello Redditi PF (ex Unico / Persone Fisiche)": 150.00,
+      "Modello Redditi PF Forfettario": 110.00,
+      "Certificazione Unica (CU) / Dichiarativi": 35.00,
       "ISEE / DSU Ordinario": 20.00,
       "Dichiarazione di Successione + Voltura": 550.00,
+      "Contratto di Locazione / RLI": 150.00,
       "Pratica Previdenziale / Patronato": 30.00,
+      "Estratto Conto Contributivo / Pensione": 20.00,
       "Cedolino / Contratto Lavoro": 25.00,
-      "IMU / Visure / Pratica Fiscale": 40.00
+      "Colf e Badanti (Assunzione / Gestione)": 220.00,
+      "IMU / F24 / Ravvedimento / Visure": 30.00,
+      "Pratica ENEA": 70.00,
+      "Rinnovo / Rilascio Permesso di Soggiorno": 250.00
     };
-
     function StudioFlowSuite() {
       const [activeTab, setActiveTab] = useState('dashboard');
       const [currentProfile, setCurrentProfile] = useState('mio_studio');
@@ -752,17 +759,25 @@
                 {!soloCaricamentoDocumenti && (
                   <>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px' }}>Tipo di Pratica / Servizio:</label>
-                    <select
+                   <select
                       value={nuovoServizio}
                       onChange={(e) => setNuovoServizio(e.target.value)}
                       style={{ width: '100%', padding: '8px', marginBottom: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                     >
                       <option value="Modello 730 Singolo">Modello 730 Singolo (€ 70,00)</option>
+                      <option value="Modello Redditi PF (ex Unico / Persone Fisiche)">Modello Redditi PF / ex Unico (€ 150,00)</option>
+                      <option value="Modello Redditi PF Forfettario">Modello Redditi PF Forfettario (€ 110,00)</option>
+                      <option value="Certificazione Unica (CU) / Dichiarativi">Certificazione Unica (CU) / Dichiarativi (€ 35,00)</option>
                       <option value="ISEE / DSU Ordinario">ISEE / DSU Ordinario (€ 20,00)</option>
                       <option value="Dichiarazione di Successione + Voltura">Dichiarazione di Successione + Voltura (€ 550,00)</option>
+                      <option value="Contratto di Locazione / RLI">Contratto di Locazione / RLI (€ 150,00)</option>
                       <option value="Pratica Previdenziale / Patronato">Pratica Previdenziale / Patronato (€ 30,00)</option>
+                      <option value="Estratto Conto Contributivo / Pensione">Estratto Conto Contributivo / Pensione (€ 20,00)</option>
                       <option value="Cedolino / Contratto Lavoro">Cedolino / Contratto Lavoro (€ 25,00)</option>
-                      <option value="IMU / Visure / Pratica Fiscale">IMU / Visure / Pratica Fiscale (€ 40,00)</option>
+                      <option value="Colf e Badanti (Assunzione / Gestione)">Colf e Badanti (€ 220,00)</option>
+                      <option value="IMU / F24 / Ravvedimento / Visure">IMU / F24 / Ravvedimento / Visure (€ 30,00)</option>
+                      <option value="Pratica ENEA">Pratica ENEA (€ 70,00)</option>
+                      <option value="Rinnovo / Rilascio Permesso di Soggiorno">Rinnovo / Rilascio Permesso di Soggiorno (€ 250,00)</option>
                     </select>
 
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px' }}>Canale / Regime IVA:</label>
