@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+f<!DOCTYPE html>
 <html lang="it">
 <head>
   <meta charset="UTF-8" />
@@ -56,7 +56,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
       const [soloCaricamentoDocumenti, setSoloCaricamentoDocumenti] = useState(false);
       const [nuovoCanaleIva, setNuovoCanaleIva] = useState('studio');
       const [nuovoPromemoria, setNuovoPromemoria] = useState('');
-
+      const [nuovoServizio, setNuovoServizio] = useState('Modello 730 Singolo');
       const [pratiche, setPratiche] = useState([
         { 
           id: 1, 
@@ -231,6 +231,46 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
           cliente: nuovoClienteNome,
           tipoCliente: nuovoTipoCliente,
           quotaAssociativaPagata: !aggiungiQuotaAssociativa,
+          quotaImporto: aggiungiQuotaAssociativa ? 25.00 : 0,
+          servizio: soloCaricamentoDocumenti ? "Solo Inserimento Documenti" : nuovoServizio,
+          modalitaLavorazione: "Ufficio / Sportello",
+          canale: soloCaricamentoDocumenti ? "App / Link No-SPID" : (hasIva ? "Studio Commercialista" : "Esclusivo CAF"),
+          stato: soloCaricamentoDocumenti ? "Documenti acquisiti (Gratuito)" : (nuovoPromemoria ? "In Standby" : "Pronta per lavorazione"),
+          semaforo: nuovoPromemoria ? "giallo" : "verde",
+          imponibile: soloCaricamentoDocumenti
+            ? 0.00
+            : ({
+                "Modello 730 Singolo": 70.00,
+                "ISEE / DSU Ordinario": 20.00,
+                "Dichiarazione di Successione + Voltura": 550.00,
+                "Pratica Previdenziale / Patronato": 30.00,
+                "Cedolino / Contratto Lavoro": 25.00,
+                "IMU / Visure / Pratica Fiscale": 40.00
+              }[nuovoServizio] ?? 70.00),
+          iva: hasIva,
+          soloDocumenti: soloCaricamentoDocumenti,
+          promemoria: nuovoPromemoria
+        };
+        setPratiche([nuova, ...pratiche]);
+        setShowSportelloModal(false);
+        setNuovoClienteNome('');
+        setNuovoClienteCf('');
+        setNuovoServizio('Modello 730 Singolo');
+        setNuovoPromemoria('');
+        alert('Nuova pratica registrata correttamente con isolamento GDPR!');
+      };
+      
+               value={nuovoServizio}
+                  onChange={(e) => setNuovoServizio(e.target.value)}
+                  style={{ width: '100%', padding: '8px', marginBottom: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                >
+                  <option value="Modello 730 Singolo (Documenti via Link OTP)">Modello 730 Singolo (Documenti via Link OTP)</option>
+                  <option value="ISEE / DSU Ordinario">ISEE / DSU Ordinario</option>
+                  <option value="Dichiarazione di Successione + Voltura">Dichiarazione di Successione + Voltura</option>
+                  <option value="Pratica Previdenziale / Patronato">Pratica Previdenziale / Patronato</option>
+                  <option value="Cedolino / Contratto Lavoro">Cedolino / Contratto Lavoro</option>
+                  <option value="IMU / Visure / Pratica Fiscale">IMU / Visure / Pratica Fiscale</option>
+                </select>
           quotaImporto: aggiungiQuotaAssociativa ? 25.00 : 0,
           servizio: soloCaricamentoDocumenti ? "Solo Inserimento Documenti" : "Pratica Fiscale / Servizio Studio",
           modalitaLavorazione: "Ufficio / Sportello",
@@ -813,7 +853,23 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                     Solo Inserimento / Invio Documenti (Gratuito € 0,00)
                   </label>
                 </div>
-
+                {!soloCaricamentoDocumenti && (
+                  <>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px' }}>Tipo di Pratica / Servizio:</label>
+                    <select
+                      value={nuovoServizio}
+                      onChange={(e) => setNuovoServizio(e.target.value)}
+                      style={{ width: '100%', padding: '8px', marginBottom: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                    >
+                      <option value="Modello 730 Singolo">Modello 730 Singolo</option>
+                      <option value="ISEE / DSU Ordinario">ISEE / DSU Ordinario</option>
+                      <option value="Dichiarazione di Successione + Voltura">Dichiarazione di Successione + Voltura</option>
+                      <option value="Pratica Previdenziale / Patronato">Pratica Previdenziale / Patronato</option>
+                      <option value="Cedolino / Contratto Lavoro">Cedolino / Contratto Lavoro</option>
+                      <option value="IMU / Visure / Pratica Fiscale">IMU / Visure / Pratica Fiscale</option>
+                    </select>
+                  </>
+                )}
                 {!soloCaricamentoDocumenti && (
                   <select value={nuovoCanaleIva} onChange={(e) => setNuovoCanaleIva(e.target.value)} style={{ width: '100%', padding: '8px', marginBottom: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }}>
                     <option value="studio">Canale Studio Commercialista (+ IVA 22%)</option>
