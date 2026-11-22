@@ -115,7 +115,7 @@
       inps: 'https://www.inps.it',
       inail: 'https://www.inail.it',
       cassaEdile: 'https://www.cassaedile.it',
-      qweb: 'https://qweb.zucchetti.it',
+      qweb: 'https://qwebcloud.zucchetti.com/SuiteQWebCloud/ActionLogin.do',
       cesac: 'https://www.cesac.it'
     };
 
@@ -212,10 +212,15 @@
       const [autoTassoInteresseAnnua, setAutoTassoInteresseAnnua] = useState(2.5);
       const [csvImportTesto, setCsvImportTesto] = useState('');
 
-      const [portaliUrls, setPortaliUrls] = useState(() => ({
-        ...PORTALI_DEFAULT,
-        ...leggiStorage(PORTALI_URLS_KEY, {})
-      }));
+      const [portaliUrls, setPortaliUrls] = useState(() => {
+        const salvati = leggiStorage(PORTALI_URLS_KEY, {});
+        const uniti = { ...PORTALI_DEFAULT, ...salvati };
+        if (!uniti.qweb || uniti.qweb === 'https://qweb.zucchetti.it') {
+          uniti.qweb = PORTALI_DEFAULT.qweb;
+          try { localStorage.setItem(PORTALI_URLS_KEY, JSON.stringify(uniti)); } catch (e) {}
+        }
+        return uniti;
+      });
 
       const [applicativiSedi, setApplicativiSedi] = useState(() => {
         const salvati = leggiStorage(APPLICATIVI_SEDI_KEY, {});
@@ -1409,7 +1414,7 @@
                   <button type="button" onClick={() => apriPortaleEsterno(localiSedeCorrente.desktopTelematico, 'Desktop Telematico')} style={{ background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.22)', padding: '6px 9px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🖥️ Desktop Tel.</button>
                   <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.inail, 'INAIL')} style={{ background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.22)', padding: '6px 9px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🛡️ INAIL</button>
                   <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.cassaEdile, 'Cassa Edile')} style={{ background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.22)', padding: '6px 9px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🏗️ Cassa Edile</button>
-                  <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.qweb, 'QWeb')} style={{ background: '#1d4ed8', color: '#fff', border: '1px solid rgba(255,255,255,0.25)', padding: '6px 9px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🌐 QWeb</button>
+                  <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.qweb, 'QWeb Cloud Zucchetti')} style={{ background: '#1d4ed8', color: '#fff', border: '1px solid rgba(255,255,255,0.25)', padding: '6px 9px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🌐 QWeb</button>
                   <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.cesac, 'Cesac')} style={{ background: '#0369a1', color: '#fff', border: '1px solid rgba(255,255,255,0.25)', padding: '6px 9px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🌐 Cesac</button>
                 </>
               )}
@@ -1608,7 +1613,7 @@
                         <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.inps, 'INPS')} style={{ background: '#1e293b', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🏛️ INPS</button>
                         <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.inail, 'INAIL')} style={{ background: '#1e293b', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🛡️ INAIL</button>
                         <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.cassaEdile, 'Cassa Edile')} style={{ background: '#1e293b', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🏗️ Cassa Edile</button>
-                        <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.qweb, 'QWeb')} style={{ background: '#1d4ed8', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🌐 QWeb</button>
+                        <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.qweb, 'QWeb Cloud Zucchetti')} style={{ background: '#1d4ed8', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🌐 QWeb</button>
                         <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.cesac, 'Cesac')} style={{ background: '#0369a1', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🌐 Cesac</button>
                         <button type="button" onClick={() => apriPortaleEsterno(localiSedeCorrente.desktopTelematico, 'Desktop Telematico')} style={{ background: '#334155', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🖥️ Desktop Tel.</button>
                         <button type="button" onClick={() => apriPortaleEsterno(localiSedeCorrente.wincoge, 'WinCoge')} style={{ background: '#475569', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>💻 WinCoge</button>
@@ -1663,7 +1668,7 @@
                               ['inps', 'INPS'],
                               ['inail', 'INAIL'],
                               ['cassaEdile', 'Cassa Edile'],
-                              ['qweb', 'QWeb Cloud'],
+                              ['qweb', 'QWeb Cloud Zucchetti'],
                               ['cesac', 'Cesac Gestionale']
                             ].map(([k, lbl]) => (
                               <label key={k} style={{ fontSize: '12px' }}>
