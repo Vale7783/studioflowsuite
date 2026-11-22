@@ -3,207 +3,307 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>StudioFlow Suite - Gestione Pratiche, CAF, Patronato & Rete</title>
+  <title>StudioFlow Suite - Gestione Pratiche & Multi-Sede</title>
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body style="margin:0; padding:0; background:#f4f6f9;">
+<body>
   <div id="root"></div>
 
   <script type="text/babel">
     const { useState, useEffect } = React;
 
+    // 1. CONFIGURAZIONE SUPABASE PROGETTO STUDIO
     const SUPABASE_URL = 'https://mgmhzlmufllxriithtth.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_jXQVt0X8Av8E6qe_9xBxfQ_Jw1qwm1O';
     const STORAGE_BUCKET_PRIVATO = 'documenti-pratiche';
 
-    const PORTALI_DEFAULT = {
-      qweb: 'https://qwebcloud.zucchetti.com/SuiteQWebCloud/ActionLogin.do',
-      cesac: 'https://www.cesacgestionale.it/backoffice#dashboard',
-      ade: 'https://www.agenziaentrate.gov.it/',
-      inps: 'https://www.inps.it/',
-      desktopTelematico: 'https://www.agenziaentrate.gov.it/portale/web/guest/schede/servizi/desktop-telematico',
-      inail: 'https://www.inail.it/',
-      cassaEdile: 'https://www.cassaedile.it/',
-      wincoge: '',
-      pagheOpen: ''
+    const STORAGE_KEY = 'studioflow_pratiche_v1';
+    const MODULI_AUTONOMI_KEY = 'studioflow_moduli_autonomi_v1';
+    const STORICO_ANNATE_KEY = 'studioflow_storico_annate_v1';
+    const PRENOTAZIONI_KEY = 'studioflow_prenotazioni_v1';
+    const FASCE_KEY = 'studioflow_fasce_v1';
+    const SIMULAZIONI_KEY = 'studioflow_simulazioni_v1';
+    const INVALIDITA_KEY = 'studioflow_invalidita104_v1';
+    const DELEGHE_KEY = 'studioflow_deleghe_v1';
+    const PORTALI_URLS_KEY = 'studioflow_portali_urls_v1';
+    const APPLICATIVI_SEDI_KEY = 'studioflow_applicativi_sedi_v1';
+
+    let supabaseClient = null;
+    try {
+      if (
+        window.supabase &&
+        SUPABASE_URL.startsWith('https://') &&
+        SUPABASE_ANON_KEY.trim().length > 10
+      ) {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      }
+    } catch (e) {
+      supabaseClient = null;
+    }
+
+    const TARIFFE_SERVIZI = {
+      'Modello 730 / Redditi PF': 70.00,
+      'Pratica ISEE / DSU': 35.00,
+      'Elaborazione Cedolino / Busta Paga': 25.00,
+      'Colf & Badanti (Assunzione / Cedolino)': 40.00,
+      'Successione & Voltura Catastale': 280.00,
+      'Permessi Legge 104 (Familiare Disabile)': 45.00,
+      'Legge 104 (Riconoscimento / Art. 3)': 50.00,
+      'Invalidità Civile / Inabilità / Accompagnamento': 55.00,
+      'Aggiornamento Contributivo & Pensione': 20.00,
+      'Pratica Personalizzata / Altra Richiesta': 50.00
     };
 
     const SISTEMI_ESTERNI = [
-      "QWeb",
-      "Cesac",
-      "WinCoge",
-      "Paghe Open",
-      "Agenzia delle Entrate",
-      "INPS",
-      "Desktop Telematico",
-      "INAIL",
-      "Cassa Edile"
-    ];
-
-    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    const STORAGE_KEY = 'studioflow_pratiche_v1';
-    const DELEGHE_KEY = 'studioflow_deleghe_fapi_v1';
-    const PENSIONI_KEY = 'studioflow_pensioni_scadenzario_v1';
-    const INVALIDITA_KEY = 'studioflow_invalidita_104_v1';
-    const PRENOTAZIONI_KEY = 'studioflow_prenotazioni_v1';
-    const CONFIG_FASCE_KEY = 'studioflow_fasce_orarie_v1';
-    const STORICO_ANNATE_KEY = 'studioflow_storico_annate_v1';
-    const AUTONOMIA_KEY = 'studioflow_moduli_autonomi_v1';
-    const PORTALI_CONFIG_KEY = 'studioflow_portali_url_v1';
-
-    const TARIFFE_SERVIZI = {
-      "Certificazione Unica (CU) / Dichiarativi": 50.00,
-      "Modello 730 / Redditi PF": 70.00,
-      "Pratica ISEE / DSU": 35.00,
-      "Calcolo IMU, F24 e Tributi Locali": 30.00,
-      "Ravvedimento Operoso / Rateizzazioni F24": 30.00,
-      "Pratica ENEA (Risparmio Energetico)": 70.00,
-      "Contratto di Locazione e Registrazione (RLI)": 200.00,
-      "Proroga, Cessione o Risoluzione Contratto": 50.00,
-      "Dichiarazione di Successione + Voltura": 350.00,
-      "DIS-COLL / NASpI / Maternità": 30.00,
-      "Assegno Unico Universale": 30.00,
-      "Domanda di Pensione": 50.00,
-      "Estratto Conto Contributivo": 20.00,
-      "Calcolo Pensioni e Riscatti": 50.00,
-      "Elaborazione Cedolino / Busta Paga": 30.00,
-      "Pratica Assunzione / Cessazione": 70.00,
-      "Pacchetto Completo Colf e Badanti (12 Mesi)": 220.00,
-      "Rilascio / Rinnovo Permesso di Soggiorno": 250.00,
-      "Legge 104 (Riconoscimento / Art. 3)": 50.00,
-      "Permessi Legge 104 (Familiare Disabile)": 45.00,
-      "Invalidità Civile / Inabilità / Accompagnamento": 50.00,
-      "Pratica Personalizzata / Altra Richiesta": 50.00
-    };
-
-    const FASCE_DEFAULT = [
-      { id: "mattina_1", etichetta: "09:00 - 10:30", maxPosti: 4 },
-      { id: "mattina_2", etichetta: "10:30 - 12:30", maxPosti: 4 },
-      { id: "pomeriggio_1", etichetta: "15:00 - 17:00", maxPosti: 4 },
-      { id: "pomeriggio_2", etichetta: "17:00 - 19:00", maxPosti: 3 }
-    ];
-
-    const STRUTTURA_GERARCHICA_FAPI = [
-      { id: "naz", livello: "Nazionale", ente: "Fapi Nazionale", territorio: "Italia", responsabile: "Direzione / Presidenza Nazionale", stato: "Attivo" },
-      { id: "reg_tos", livello: "Regionale", ente: "Fapi Toscana", territorio: "Toscana", responsabile: "Coordinamento Regionale", stato: "Attivo" },
-      { id: "reg_pug", livello: "Regionale", ente: "Fapi Puglia", territorio: "Puglia", responsabile: "Coordinamento Regionale", stato: "Attivo" },
-      { id: "prov_fi", livello: "Provinciale", ente: "Fapi Firenze", territorio: "Provincia di Firenze", responsabile: "Segreteria / Sede Provinciale", stato: "Attivo" },
-      { id: "prov_br", livello: "Provinciale", ente: "Fapi Brindisi", territorio: "Provincia di Brindisi", responsabile: "Segreteria / Sede Provinciale", stato: "Attivo" },
-      { id: "com_fi", livello: "Comunale", ente: "Sportello Comunale Firenze", territorio: "Comune di Firenze", responsabile: "Referente Comunale", stato: "Attivo" },
-      { id: "com_br", livello: "Comunale", ente: "Sportello Comunale Brindisi", territorio: "Comune di Brindisi", responsabile: "Referente Comunale", stato: "Attivo" },
-      { id: "zon_1", livello: "Zonale", ente: "Area Zonale Operativa", territorio: "Zona / Distretto", responsabile: "Direttore Zonale", stato: "Supervisione" },
-      { id: "sede_fi", livello: "Sede / Sportello", ente: "Studio Firenze (Sede Centrale)", territorio: "Firenze", responsabile: "Titolare Sede", stato: "Operativo" },
-      { id: "sede_br", livello: "Sede / Sportello", ente: "Studio Brindisi (Sede Collegata)", territorio: "Brindisi", responsabile: "Responsabile Sede", stato: "Operativo" }
+      'QWeb',
+      'Cesac',
+      'Desktop Telematico',
+      'WinCoge',
+      'Paghe Open',
+      'Agenzia delle Entrate',
+      'INPS',
+      'INAIL',
+      'Cassa Edile'
     ];
 
     const PRATICHE_INIZIALI = [
       {
-        id: 1,
-        clientId: "RSSMRA80A01D612K",
-        sedeCompetenza: "Firenze",
-        perimetro: "Studio / Fiscale",
-        modalitaEsecuzione: "Piattaforma Autonoma",
-        sistemaEsterno: "Agenzia delle Entrate",
-        protocolloEsterno: "",
-        cliente: "Mario Rossi",
-        telefono: "3331234567",
-        email: "mario.rossi@esempio.it",
-        dataRevisione: "2026-12-10",
-        tipoCliente: "Occasionale",
-        quotaAssociativaPagata: false,
+        id: 1001,
+        clientId: 'RSSMRA80A01D612K',
+        sedeCompetenza: 'Firenze',
+        perimetro: 'Studio / Fiscale',
+        modalitaEsecuzione: 'Piattaforma Autonoma',
+        sistemaEsterno: 'QWeb',
+        protocolloEsterno: '',
+        cliente: 'Mario Rossi',
+        telefono: '3331234567',
+        email: 'mario.rossi@example.it',
+        dataRevisione: '',
+        tipoCliente: 'Ordinario',
+        quotaAssociativaPagata: true,
         quotaImporto: 0,
-        servizio: "Certificazione Unica (CU) / Dichiarativi",
-        modalitaLavorazione: "Ufficio / Sportello",
-        canale: "Studio Commercialista",
-        stato: "In attesa CU datore lavoro",
-        semaforo: "giallo",
-        imponibile: 50.00,
+        servizio: 'Modello 730 / Redditi PF',
+        modalitaLavorazione: 'Ufficio / Sportello',
+        canale: 'Studio Commercialista',
+        stato: 'Pronta per lavorazione',
+        semaforo: 'verde',
+        imponibile: 70.00,
         iva: true,
         soloDocumenti: false,
         pagata: false,
-        promemoria: "Sollecitare CU entro fine mese",
-        archivioPratica: "Documento identità e delega acquisiti",
-        archivioRevisione: "Verifica redditi lavoro dipendente",
-        archivioRicevute: "In attesa protocollo telematico",
+        promemoria: '',
+        archivioPratica: 'CU e spese sanitarie acquisite',
+        archivioRevisione: '',
+        archivioRicevute: '',
         allegati: [],
-        ultimoAggiornamento: "2026-11-22 • Firenze"
-      },
-      {
-        id: 2,
-        clientId: "BNCGPP75E15B180W",
-        sedeCompetenza: "Brindisi",
-        perimetro: "CAF / DSU-ISEE",
-        modalitaEsecuzione: "Gestionale / Portale Esterno",
-        sistemaEsterno: "QWeb",
-        protocolloEsterno: "DSU-BR-2026-104",
-        cliente: "Giuseppe Bianchi",
-        telefono: "3409876543",
-        email: "g.bianchi@esempio.it",
-        dataRevisione: "2026-11-28",
-        tipoCliente: "Convenzionato",
-        quotaAssociativaPagata: true,
-        quotaImporto: 25,
-        servizio: "Pratica ISEE / DSU",
-        modalitaLavorazione: "Ufficio / Sportello",
-        canale: "Esclusivo CAF",
-        stato: "DSU acquisita, verifica giacenze",
-        semaforo: "verde",
-        imponibile: 35.00,
-        iva: false,
-        soloDocumenti: false,
-        pagata: true,
-        promemoria: "",
-        archivioPratica: "Saldi e giacenze conti verificati",
-        archivioRevisione: "Controllo nucleo familiare",
-        archivioRicevute: "Ricevuta DSU #BR-2026-104",
-        allegati: [],
-        ultimoAggiornamento: "2026-11-22 • Brindisi"
+        ultimoAggiornamento: '22/11/2026 10:00'
       }
     ];
 
+    const FASCE_INIZIALI = [
+      { id: 'mattina_1', etichetta: '09:00 - 11:00', maxPosti: 4 },
+      { id: 'mattina_2', etichetta: '11:00 - 13:00', maxPosti: 4 },
+      { id: 'pomeriggio_1', etichetta: '15:00 - 17:00', maxPosti: 4 },
+      { id: 'pomeriggio_2', etichetta: '17:00 - 19:00', maxPosti: 3 }
+    ];
+
+    const PORTALI_DEFAULT = {
+      ade: 'https://www.agenziaentrate.gov.it',
+      inps: 'https://www.inps.it',
+      inail: 'https://www.inail.it',
+      cassaEdile: 'https://www.cassaedile.it',
+      qweb: 'https://qweb.zucchetti.it',
+      cesac: 'https://www.cesac.it'
+    };
+
+    const APPLICATIVI_SEDI_DEFAULT = {
+      firenze: {
+        desktopTelematico: 'Desktop Telematico - Postazione Firenze (aggiornabile in autonomia)',
+        wincoge: 'WinCoge - Contabilità Firenze (aggiornabile in autonomia)',
+        pagheOpen: 'Paghe Open - Paghe Firenze (aggiornabile in autonomia)'
+      },
+      brindisi: {
+        desktopTelematico: 'Desktop Telematico - Postazione Brindisi (configurabile dalla sede)',
+        wincoge: 'WinCoge - Contabilità Brindisi (configurabile dalla sede)',
+        pagheOpen: 'Paghe Open - Paghe Brindisi (configurabile dalla sede)'
+      }
+    };
+
+    const TARIFFARIO_FIRENZE = [
+      { area: 'Fiscale', servizio: 'Modello 730 / Redditi PF', studio: '€ 70,00', iva: 'IVA 22%' },
+      { area: 'CAF', servizio: 'Pratica ISEE / DSU', studio: '€ 35,00', iva: 'Esente IVA' },
+      { area: 'Lavoro', servizio: 'Elaborazione Cedolino / Busta Paga', studio: '€ 25,00', iva: 'IVA 22%' },
+      { area: 'Patronato', servizio: 'Aggiornamento Contributivo & Pensione', studio: '€ 20,00', iva: 'IVA 22%' }
+    ];
+
+    const TARIFFARIO_BRINDISI = [
+      { area: 'Fiscale', servizio: 'Modello 730 / Redditi PF', studio: '€ 65,00', iva: 'IVA 22%' },
+      { area: 'CAF', servizio: 'Pratica ISEE / DSU', studio: '€ 30,00', iva: 'Esente IVA' },
+      { area: 'Lavoro', servizio: 'Elaborazione Cedolino / Busta Paga', studio: '€ 22,00', iva: 'IVA 22%' },
+      { area: 'Patronato', servizio: 'Aggiornamento Contributivo & Pensione', studio: '€ 20,00', iva: 'IVA 22%' }
+    ];
+
+    const STRUTTURA_GERARCHICA_FAPI = [
+      { id: 1, livello: 'Nazionale', ente: 'FAPI Nazionale', territorio: 'Italia', responsabile: 'Direzione Nazionale' },
+      { id: 2, livello: 'Regionale', ente: 'FAPI Toscana', territorio: 'Toscana (Firenze)', responsabile: 'Coordinamento Regionale' },
+      { id: 3, livello: 'Regionale', ente: 'FAPI Puglia', territorio: 'Puglia (Brindisi)', responsabile: 'Coordinamento Regionale' },
+      { id: 4, livello: 'Sede / Sportello', ente: 'Studio Firenze / Brindisi', territorio: 'Firenze ↔ Brindisi', responsabile: 'Operatori Abilitati' }
+    ];
+
+    const CREDENZIALI_INIZIALI = [
+      { id: 1, sede: 'Firenze', portale: 'Desktop Telematico / Entratel', pin: 'Profilo abilitato su postazione Firenze' },
+      { id: 2, sede: 'Firenze', portale: 'WinCoge / Paghe Open', pin: 'Ambiente locale Sede Firenze' },
+      { id: 3, sede: 'Brindisi', portale: 'Desktop Telematico / Sportello', pin: 'Gestione autonoma Sede Brindisi' }
+    ];
+
+    function leggiStorage(chiave, fallback) {
+      try {
+        const raw = localStorage.getItem(chiave);
+        if (!raw) return fallback;
+        const parsed = JSON.parse(raw);
+        return parsed ?? fallback;
+      } catch (e) {
+        return fallback;
+      }
+    }
+
+    function etichettaAggiornamentoCorrente() {
+      const now = new Date();
+      return now.toLocaleString('it-IT', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
     function StudioFlowSuite() {
       const [sessionUser, setSessionUser] = useState(null);
-      const [authChecked, setAuthChecked] = useState(false);
-      const [anteprimaLocaleAttiva, setAnteprimaLocaleAttiva] = useState(false);
+      const [authChecked, setAuthChecked] = useState(!supabaseClient);
+      const [anteprimaLocaleAttiva, setAnteprimaLocaleAttiva] = useState(!supabaseClient);
       const [loginEmail, setLoginEmail] = useState('');
       const [loginPassword, setLoginPassword] = useState('');
       const [loginError, setLoginError] = useState('');
       const [loginLoading, setLoginLoading] = useState(false);
+      const [dbStatus, setDbStatus] = useState(supabaseClient ? 'In attesa login' : 'Anteprima Locale');
 
       const [currentProfile, setCurrentProfile] = useState('mio_studio');
       const [activeTab, setActiveTab] = useState('dashboard');
-      const [dbStatus, setDbStatus] = useState('In attesa login');
 
-      const [portaliUrls, setPortaliUrls] = useState(() => {
-        try {
-          const saved = localStorage.getItem(PORTALI_CONFIG_KEY);
-          if (saved) return { ...PORTALI_DEFAULT, ...JSON.parse(saved) };
-        } catch (e) {}
-        return PORTALI_DEFAULT;
-      });
-
-      const [pratiche, setPratiche] = useState(() => {
-        try {
-          const saved = localStorage.getItem(STORAGE_KEY);
-          if (saved) {
-            const parsed = JSON.parse(saved);
-            if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-          }
-        } catch (e) {}
-        return PRATICHE_INIZIALI;
-      });
-
+      const [pratiche, setPratiche] = useState(() => leggiStorage(STORAGE_KEY, PRATICHE_INIZIALI));
       const [searchQuery, setSearchQuery] = useState('');
-      const [filterStato, setFilterStato] = useState('tutte');
       const [filterPerimetro, setFilterPerimetro] = useState('tutti');
       const [filterModalitaEsecuzione, setFilterModalitaEsecuzione] = useState('tutte');
+      const [filterStato, setFilterStato] = useState('tutte');
 
-      const [selectedPratica, setSelectedPratica] = useState(null);
+      const [autonomiaSubTab, setAutonomiaSubTab] = useState('dichiarativi');
+      const [moduliAutonomi, setModuliAutonomi] = useState(() => leggiStorage(MODULI_AUTONOMI_KEY, []));
+      const [autoCliente, setAutoCliente] = useState('');
+      const [autoCf, setAutoCf] = useState('');
+      const [autoTipoModulo, setAutoTipoModulo] = useState('Modello Redditi Tardivo / Ravvedimento');
+      const [autoDettaglioLavoro, setAutoDettaglioLavoro] = useState('');
+      const [autoImportoBase, setAutoImportoBase] = useState(1000);
+      const [autoAliquotaSanzione, setAutoAliquotaSanzione] = useState(1.67);
+      const [autoGiorniRitardo, setAutoGiorniRitardo] = useState(30);
+      const [autoTassoInteresseAnnua, setAutoTassoInteresseAnnua] = useState(2.5);
+      const [csvImportTesto, setCsvImportTesto] = useState('');
+
+      const [portaliUrls, setPortaliUrls] = useState(() => ({
+        ...PORTALI_DEFAULT,
+        ...leggiStorage(PORTALI_URLS_KEY, {})
+      }));
+
+      const [applicativiSedi, setApplicativiSedi] = useState(() => {
+        const salvati = leggiStorage(APPLICATIVI_SEDI_KEY, {});
+        return {
+          firenze: { ...APPLICATIVI_SEDI_DEFAULT.firenze, ...(salvati.firenze || {}) },
+          brindisi: { ...APPLICATIVI_SEDI_DEFAULT.brindisi, ...(salvati.brindisi || {}) }
+        };
+      });
+
+      const [storicoAnnate, setStoricoAnnate] = useState(() => leggiStorage(STORICO_ANNATE_KEY, []));
+      const [annataCliente, setAnnataCliente] = useState('');
+      const [annataCf, setAnnataCf] = useState('');
+      const [annoRiferimento, setAnnoRiferimento] = useState(2025);
+      const [statoDsuIsee, setStatoDsuIsee] = useState('DSU Presentata & ISEE Attestato');
+      const [protocolloDsu, setProtocolloDsu] = useState('');
+      const [attestazioneIsee, setAttestazioneIsee] = useState('');
+      const [redditiDichiarati, setRedditiDichiarati] = useState('');
+      const [cuSostituto, setCuSostituto] = useState('');
+      const [cuRedditoRitenute, setCuRedditoRitenute] = useState('');
+      const [listaCuAnno, setListaCuAnno] = useState([]);
+      const [contoIstituto, setContoIstituto] = useState('');
+      const [contoSaldoGiacenza, setContoSaldoGiacenza] = useState('');
+      const [listaContiAnno, setListaContiAnno] = useState([]);
+      const [noteAnnata, setNoteAnnata] = useState('');
+
+      const oggiIso = new Date().toISOString().slice(0, 10);
+      const [prenotazioni, setPrenotazioni] = useState(() => leggiStorage(PRENOTAZIONI_KEY, []));
+      const [fasceOrarie, setFasceOrarie] = useState(() => leggiStorage(FASCE_KEY, FASCE_INIZIALI));
+      const [prenNome, setPrenNome] = useState('');
+      const [prenTelefono, setPrenTelefono] = useState('');
+      const [prenEmail, setPrenEmail] = useState('');
+      const [prenData, setPrenData] = useState(oggiIso);
+      const [prenFascia, setPrenFascia] = useState('mattina_1');
+      const [prenServizio, setPrenServizio] = useState('Pratica ISEE / DSU');
+      const [prenNote, setPrenNote] = useState('');
+      const [giornoFlusso, setGiornoFlusso] = useState(oggiIso);
+      const [modalitaPrenCliente, setModalitaPrenCliente] = useState(false);
+
+      const [pensioneAssistito, setPensioneAssistito] = useState('');
+      const [pensioneCf, setPensioneCf] = useState('');
+      const [dataNascita, setDataNascita] = useState('1968-05-15');
+      const [regimeContributivo, setRegimeContributivo] = useState('misto_pre_1996');
+      const [anniMaturati, setAnniMaturati] = useState(25);
+      const [mesiMaturati, setMesiMaturati] = useState(6);
+      const [requisitoEtaVecchiaia, setRequisitoEtaVecchiaia] = useState(67);
+      const [requisitoAnniAnticipata, setRequisitoAnniAnticipata] = useState(42.83);
+      const [riscattoLaurea, setRiscattoLaurea] = useState(false);
+      const [riscattoBuchiContributivi, setRiscattoBuchiContributivi] = useState(false);
+      const [riscattoMaternitaCongedi, setRiscattoMaternitaCongedi] = useState(false);
+      const [riscattoServizioMilitare, setRiscattoServizioMilitare] = useState(false);
+      const [noteRiscatto, setNoteRiscatto] = useState('');
+      const [dataUltimoRicalcolo, setDataUltimoRicalcolo] = useState(oggiIso);
+      const [periodicitaAnni, setPeriodicitaAnni] = useState(5);
+      const [simulazioniSalvate, setSimulazioniSalvate] = useState(() => leggiStorage(SIMULAZIONI_KEY, []));
+
+      const [invAssistito, setInvAssistito] = useState('');
+      const [invCf, setInvCf] = useState('');
+      const [invTipologia, setInvTipologia] = useState('Permessi Retribuiti Legge 104 (Familiare Disabile)');
+      const [invFaseIter, setInvFaseIter] = useState('Raccolta Documenti / Certificato Medico');
+      const [invFamiliare, setInvFamiliare] = useState('');
+      const [invCertificatoMedico, setInvCertificatoMedico] = useState(false);
+      const [invDocumentazioneSanitaria, setInvDocumentazioneSanitaria] = useState(false);
+      const [invDelegaAllegata, setInvDelegaAllegata] = useState(false);
+      const [invDataRevisione, setInvDataRevisione] = useState('');
+      const [invNote, setInvNote] = useState('');
+      const [praticheInvalidita104, setPraticheInvalidita104] = useState(() => leggiStorage(INVALIDITA_KEY, []));
+
+      const [livelloSelezionato, setLivelloSelezionato] = useState('Tutti');
+      const [delegheRegistrate, setDelegheRegistrate] = useState(() => leggiStorage(DELEGHE_KEY, []));
+      const [delegaAssistitoNome, setDelegaAssistitoNome] = useState('');
+      const [delegaAssistitoCf, setDelegaAssistitoCf] = useState('');
+      const [delegaAmbito, setDelegaAmbito] = useState('Delega Unica (CAF / Patronato / AdE / INPS)');
+      const [delegaNote, setDelegaNote] = useState('');
+
+      const [cfInput, setCfInput] = useState('');
+      const [iseeAlert, setIseeAlert] = useState(null);
+
+      const [contributoImmigrazione, setContributoImmigrazione] = useState(0);
+      const [includeKitCartaceo, setIncludeKitCartaceo] = useState(false);
+      const [praticaPrevidenzialeAbbinata, setPraticaPrevidenzialeAbbinata] = useState(false);
+
+      const [otpInserito, setOtpInserito] = useState('');
+      const [sessioneSbloccata, setSessioneSbloccata] = useState(false);
+      const [allegatiNoSpid, setAllegatiNoSpid] = useState([]);
+      const [uploadingFile, setUploadingFile] = useState(false);
+
       const [showModal, setShowModal] = useState(false);
+      const [selectedPratica, setSelectedPratica] = useState(null);
       const [editImponibile, setEditImponibile] = useState(0);
       const [editStato, setEditStato] = useState('');
       const [editSemaforo, setEditSemaforo] = useState('verde');
@@ -220,275 +320,121 @@
       const [editArchivioRevisione, setEditArchivioRevisione] = useState('');
       const [editArchivioRicevute, setEditArchivioRicevute] = useState('');
       const [editAllegati, setEditAllegati] = useState([]);
-      const [uploadingFile, setUploadingFile] = useState(false);
 
       const [showSportelloModal, setShowSportelloModal] = useState(false);
       const [nuovoClienteNome, setNuovoClienteNome] = useState('');
       const [nuovoClienteCf, setNuovoClienteCf] = useState('');
       const [nuovoClienteTelefono, setNuovoClienteTelefono] = useState('');
       const [nuovoClienteEmail, setNuovoClienteEmail] = useState('');
-      const [nuovaDataRevisione, setNuovaDataRevisione] = useState('');
-      const [nuovoTipoCliente, setNuovoTipoCliente] = useState('Occasionale');
-      const [aggiungiQuotaAssociativa, setAggiungiQuotaAssociativa] = useState(false);
-      const [soloCaricamentoDocumenti, setSoloCaricamentoDocumenti] = useState(false);
-      const [nuovoCanaleIva, setNuovoCanaleIva] = useState('studio');
+      const [nuovoServizio, setNuovoServizio] = useState('Modello 730 / Redditi PF');
       const [nuovaModalitaEsecuzione, setNuovaModalitaEsecuzione] = useState('Piattaforma Autonoma');
       const [nuovoSistemaEsterno, setNuovoSistemaEsterno] = useState('QWeb');
       const [nuovoProtocolloEsterno, setNuovoProtocolloEsterno] = useState('');
-      const [nuovoServizio, setNuovoServizio] = useState('Certificazione Unica (CU) / Dichiarativi');
       const [nomeServizioPersonalizzato, setNomeServizioPersonalizzato] = useState('');
-      const [importoServizioPersonalizzato, setImportoServizioPersonalizzato] = useState('50.00');
-      const [nuovoPromemoria, setNuovoPromemoria] = useState('');
+      const [importoServizioPersonalizzato, setImportoServizioPersonalizzato] = useState(50);
+      const [nuovoTipoCliente, setNuovoTipoCliente] = useState('Ordinario');
+      const [aggiungiQuotaAssociativa, setAggiungiQuotaAssociativa] = useState(false);
+      const [nuovoCanaleIva, setNuovoCanaleIva] = useState('studio');
+      const [soloCaricamentoDocumenti, setSoloCaricamentoDocumenti] = useState(false);
       const [nuovaPagataSubito, setNuovaPagataSubito] = useState(false);
       const [nuovaInSospeso, setNuovaInSospeso] = useState(false);
+      const [nuovaDataRevisione, setNuovaDataRevisione] = useState('');
+      const [nuovoPromemoria, setNuovoPromemoria] = useState('');
       const [nuovoArchivioPratica, setNuovoArchivioPratica] = useState('');
       const [nuovoArchivioRevisione, setNuovoArchivioRevisione] = useState('');
       const [nuovoArchivioRicevute, setNuovoArchivioRicevute] = useState('');
 
       const [showExportModal, setShowExportModal] = useState(false);
       const [exportTab, setExportTab] = useState('flussi');
-      const [showCassaModal, setShowCassaModal] = useState(false);
-      const [showVaultModal, setShowVaultModal] = useState(false);
-      const [showBrindisiTariffModal, setShowBrindisiTariffModal] = useState(false);
       const [showNoSpidModal, setShowNoSpidModal] = useState(false);
-
       const [clienteNoSpidName, setClienteNoSpidName] = useState('');
       const [clienteNoSpidPhone, setClienteNoSpidPhone] = useState('');
       const [generatedToken, setGeneratedToken] = useState(null);
-      const [otpInserito, setOtpInserito] = useState('');
-      const [sessioneSbloccata, setSessioneSbloccata] = useState(false);
-      const [allegatiNoSpid, setAllegatiNoSpid] = useState([]);
+      const [showCassaModal, setShowCassaModal] = useState(false);
+      const [showVaultModal, setShowVaultModal] = useState(false);
+      const [credentials] = useState(CREDENZIALI_INIZIALI);
+      const [showBrindisiTariffModal, setShowBrindisiTariffModal] = useState(false);
 
-      const [cfInput, setCfInput] = useState('');
-      const [iseeAlert, setIseeAlert] = useState(null);
-      const [contributoImmigrazione, setContributoImmigrazione] = useState(200);
-      const [includeKitCartaceo, setIncludeKitCartaceo] = useState(true);
-      const [praticaPrevidenzialeAbbinata, setPraticaPrevidenzialeAbbinata] = useState(false);
+      const chiaveSedeCorrente = currentProfile === 'brindisi' ? 'brindisi' : 'firenze';
+      const localiSedeCorrente = applicativiSedi[chiaveSedeCorrente] || applicativiSedi.firenze;
 
-      const [livelloSelezionato, setLivelloSelezionato] = useState('Tutti');
-      const [delegaAssistitoNome, setDelegaAssistitoNome] = useState('');
-      const [delegaAssistitoCf, setDelegaAssistitoCf] = useState('');
-      const [delegaAmbito, setDelegaAmbito] = useState('Delega Unica (CAF / Patronato / AdE / INPS)');
-      const [delegaNote, setDelegaNote] = useState('');
-      const [delegheRegistrate, setDelegheRegistrate] = useState(() => {
-        try {
-          const saved = localStorage.getItem(DELEGHE_KEY);
-          if (saved) return JSON.parse(saved);
-        } catch (e) {}
-        return [];
-      });
+      const salvaLocale = (nuovaLista) => {
+        setPratiche(nuovaLista);
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(nuovaLista)); } catch (e) {}
+      };
 
-      const [pensioneAssistito, setPensioneAssistito] = useState('');
-      const [pensioneCf, setPensioneCf] = useState('');
-      const [dataNascita, setDataNascita] = useState('1972-05-15');
-      const [regimeContributivo, setRegimeContributivo] = useState('misto_pre_1996');
-      const [anniMaturati, setAnniMaturati] = useState(24);
-      const [mesiMaturati, setMesiMaturati] = useState(6);
-      const [requisitoEtaVecchiaia, setRequisitoEtaVecchiaia] = useState(67);
-      const [requisitoAnniAnticipata, setRequisitoAnniAnticipata] = useState(42.83);
-      const [riscattoLaurea, setRiscattoLaurea] = useState(false);
-      const [riscattoBuchiContributivi, setRiscattoBuchiContributivi] = useState(false);
-      const [riscattoMaternitaCongedi, setRiscattoMaternitaCongedi] = useState(false);
-      const [riscattoServizioMilitare, setRiscattoServizioMilitare] = useState(false);
-      const [noteRiscatto, setNoteRiscatto] = useState('');
-      const [dataUltimoRicalcolo, setDataUltimoRicalcolo] = useState('2026-11-22');
-      const [periodicitaAnni, setPeriodicitaAnni] = useState(5);
-      const [simulazioniSalvate, setSimulazioniSalvate] = useState(() => {
-        try {
-          const saved = localStorage.getItem(PENSIONI_KEY);
-          if (saved) return JSON.parse(saved);
-        } catch (e) {}
-        return [];
-      });
+      const salvaModuliAutonomiLocale = (nuovaLista) => {
+        setModuliAutonomi(nuovaLista);
+        try { localStorage.setItem(MODULI_AUTONOMI_KEY, JSON.stringify(nuovaLista)); } catch (e) {}
+      };
 
-      const [invAssistito, setInvAssistito] = useState('');
-      const [invCf, setInvCf] = useState('');
-      const [invTipologia, setInvTipologia] = useState('Permessi Retribuiti Legge 104 (Familiare Disabile)');
-      const [invFaseIter, setInvFaseIter] = useState('Raccolta Documenti / Certificato Medico');
-      const [invFamiliare, setInvFamiliare] = useState('');
-      const [invCertificatoMedico, setInvCertificatoMedico] = useState(true);
-      const [invDocumentazioneSanitaria, setInvDocumentazioneSanitaria] = useState(true);
-      const [invDelegaAllegata, setInvDelegaAllegata] = useState(true);
-      const [invDataRevisione, setInvDataRevisione] = useState('2027-05-22');
-      const [invNote, setInvNote] = useState('');
-      const [praticheInvalidita104, setPraticheInvalidita104] = useState(() => {
-        try {
-          const saved = localStorage.getItem(INVALIDITA_KEY);
-          if (saved) return JSON.parse(saved);
-        } catch (e) {}
-        return [];
-      });
+      const salvaStoricoAnnateLocale = (nuovaLista) => {
+        setStoricoAnnate(nuovaLista);
+        try { localStorage.setItem(STORICO_ANNATE_KEY, JSON.stringify(nuovaLista)); } catch (e) {}
+      };
 
-      const [fasceOrarie, setFasceOrarie] = useState(() => {
-        try {
-          const saved = localStorage.getItem(CONFIG_FASCE_KEY);
-          if (saved) {
-            const parsed = JSON.parse(saved);
-            if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-          }
-        } catch (e) {}
-        return FASCE_DEFAULT;
-      });
-      const [prenotazioni, setPrenotazioni] = useState(() => {
-        try {
-          const saved = localStorage.getItem(PRENOTAZIONI_KEY);
-          if (saved) return JSON.parse(saved);
-        } catch (e) {}
-        return [];
-      });
-      const [prenNome, setPrenNome] = useState('');
-      const [prenTelefono, setPrenTelefono] = useState('');
-      const [prenEmail, setPrenEmail] = useState('');
-      const [prenData, setPrenData] = useState('2026-11-23');
-      const [prenFascia, setPrenFascia] = useState('mattina_1');
-      const [prenServizio, setPrenServizio] = useState('Pratica ISEE / DSU');
-      const [prenNote, setPrenNote] = useState('');
-      const [giornoFlusso, setGiornoFlusso] = useState('2026-11-23');
-      const [modalitaPrenCliente, setModalitaPrenCliente] = useState(false);
+      const salvaPrenotazioniLocale = (nuovaLista) => {
+        setPrenotazioni(nuovaLista);
+        try { localStorage.setItem(PRENOTAZIONI_KEY, JSON.stringify(nuovaLista)); } catch (e) {}
+      };
 
-      const [storicoAnnate, setStoricoAnnate] = useState(() => {
-        try {
-          const saved = localStorage.getItem(STORICO_ANNATE_KEY);
-          if (saved) return JSON.parse(saved);
-        } catch (e) {}
-        return [];
-      });
-      const [annataCliente, setAnnataCliente] = useState('');
-      const [annataCf, setAnnataCf] = useState('');
-      const [annoRiferimento, setAnnoRiferimento] = useState(2025);
-      const [protocolloDsu, setProtocolloDsu] = useState('');
-      const [attestazioneIsee, setAttestazioneIsee] = useState('');
-      const [statoDsuIsee, setStatoDsuIsee] = useState('DSU Presentata & ISEE Attestato');
-      const [cuSostituto, setCuSostituto] = useState('');
-      const [cuRedditoRitenute, setCuRedditoRitenute] = useState('');
-      const [listaCuAnno, setListaCuAnno] = useState([]);
-      const [redditiDichiarati, setRedditiDichiarati] = useState('');
-      const [contoIstituto, setContoIstituto] = useState('');
-      const [contoSaldoGiacenza, setContoSaldoGiacenza] = useState('');
-      const [listaContiAnno, setListaContiAnno] = useState([]);
-      const [noteAnnata, setNoteAnnata] = useState('');
+      const salvaFasceLocale = (nuovaLista) => {
+        setFasceOrarie(nuovaLista);
+        try { localStorage.setItem(FASCE_KEY, JSON.stringify(nuovaLista)); } catch (e) {}
+      };
 
-      const [autonomiaSubTab, setAutonomiaSubTab] = useState('dichiarativi');
-      const [moduliAutonomi, setModuliAutonomi] = useState(() => {
-        try {
-          const saved = localStorage.getItem(AUTONOMIA_KEY);
-          if (saved) return JSON.parse(saved);
-        } catch (e) {}
-        return [];
-      });
-      const [autoCliente, setAutoCliente] = useState('');
-      const [autoCf, setAutoCf] = useState('');
-      const [autoTipoModulo, setAutoTipoModulo] = useState('Modello Redditi Tardivo / Ravvedimento');
-      const [autoImportoBase, setAutoImportoBase] = useState('1000');
-      const [autoAliquotaSanzione, setAutoAliquotaSanzione] = useState('3.75');
-      const [autoGiorniRitardo, setAutoGiorniRitardo] = useState('30');
-      const [autoTassoInteresseAnnua, setAutoTassoInteresseAnnua] = useState('2.5');
-      const [autoDettaglioLavoro, setAutoDettaglioLavoro] = useState('');
-      const [csvImportTesto, setCsvImportTesto] = useState('');
+      const salvaSimulazioniLocale = (nuovaLista) => {
+        setSimulazioniSalvate(nuovaLista);
+        try { localStorage.setItem(SIMULAZIONI_KEY, JSON.stringify(nuovaLista)); } catch (e) {}
+      };
+
+      const salvaInvaliditaLocale = (nuovaLista) => {
+        setPraticheInvalidita104(nuovaLista);
+        try { localStorage.setItem(INVALIDITA_KEY, JSON.stringify(nuovaLista)); } catch (e) {}
+      };
+
+      const salvaDelegheLocale = (nuovaLista) => {
+        setDelegheRegistrate(nuovaLista);
+        try { localStorage.setItem(DELEGHE_KEY, JSON.stringify(nuovaLista)); } catch (e) {}
+      };
 
       const salvaPortaliUrls = (nuoviUrls) => {
         setPortaliUrls(nuoviUrls);
-        try { localStorage.setItem(PORTALI_CONFIG_KEY, JSON.stringify(nuoviUrls)); } catch (e) {}
+        try { localStorage.setItem(PORTALI_URLS_KEY, JSON.stringify(nuoviUrls)); } catch (e) {}
       };
 
-      const apriPortaleEsterno = (url, etichettaPortale = "Applicativo") => {
-        if (!url || !url.trim()) {
-          alert(`Nessun URL web configurato per ${etichettaPortale}. Puoi impostarlo nella scheda "⚙️ Suite Autonoma (QWeb / Cesac)" -> "🔗 Portali & Applicativi".`);
+      const salvaLocaliSedeCorrente = (parziale) => {
+        const aggiornato = {
+          ...applicativiSedi,
+          [chiaveSedeCorrente]: {
+            ...localiSedeCorrente,
+            ...parziale
+          }
+        };
+        setApplicativiSedi(aggiornato);
+        try { localStorage.setItem(APPLICATIVI_SEDI_KEY, JSON.stringify(aggiornato)); } catch (e) {}
+      };
+
+      const apriPortaleEsterno = (urlOrNote, nomePortale = 'Portale esterno') => {
+        const val = (urlOrNote || '').trim();
+        if (val.startsWith('http://') || val.startsWith('https://')) {
+          window.open(val, '_blank', 'noopener,noreferrer');
           return;
         }
-        window.open(url.trim(), '_blank', 'noopener,noreferrer');
+        alert(
+          `${nomePortale} (${chiaveSedeCorrente === 'brindisi' ? 'Brindisi' : 'Firenze'}):\n` +
+          `Un browser web statico non avvia programmi desktop locali in automatico.\n` +
+          `Riferimento salvato per questa sede: ${val || 'Nessun URL/nota impostato'}`
+        );
       };
 
-      const credentials = [
-        { id: 1, sede: "Firenze", portale: "Agenzia delle Entrate", pin: portaliUrls.ade },
-        { id: 2, sede: "Firenze", portale: "INPS", pin: portaliUrls.inps },
-        { id: 3, sede: "Firenze", portale: "Desktop Telematico", pin: portaliUrls.desktopTelematico },
-        { id: 4, sede: "Firenze", portale: "INAIL", pin: portaliUrls.inail },
-        { id: 5, sede: "Firenze / Edilizia", portale: "Cassa Edile", pin: portaliUrls.cassaEdile },
-        { id: 6, sede: "Firenze", portale: "QWeb Cloud (Zucchetti)", pin: portaliUrls.qweb },
-        { id: 7, sede: "Firenze / Rete", portale: "Cesac Gestionale", pin: portaliUrls.cesac },
-        { id: 8, sede: "Studio / Locale", portale: "WinCoge", pin: portaliUrls.wincoge || "Applicativo locale / URL non impostato" },
-        { id: 9, sede: "Studio / Locale", portale: "Paghe Open", pin: portaliUrls.pagheOpen || "Applicativo locale / URL non impostato" }
-      ];
-
-      const tariffarioBrindisi = [
-        { area: "CAF & Fiscale", servizio: "Pratica ISEE / DSU", studio: "€ 30,00", iva: "Esclusivo CAF: No IVA" },
-        { area: "CAF & Fiscale", servizio: "Modello 730 / Redditi PF", studio: "€ 60,00", iva: "CAF: No | Studio: +IVA 22%" },
-        { area: "Patronato", servizio: "Domanda / Pratica Patronato", studio: "€ 35,00", iva: "Secondo canale" },
-        { area: "CED & Paghe", servizio: "Cedolino / Pratica Lavoro", studio: "€ 25,00", iva: "+ IVA 22%" }
-      ];
-
-      const tariffarioFirenze = [
-        { area: "CAF & Fiscale", servizio: "Certificazione Unica (CU) / Dichiarativi", base: "€ 35,00", studio: "€ 50,00", iva: "CAF: No | Studio: +IVA 22%" },
-        { area: "CAF & Fiscale", servizio: "Modello 730 / Redditi PF", base: "€ 45,00", studio: "€ 70,00", iva: "CAF: No | Studio: +IVA 22%" },
-        { area: "CAF & Fiscale", servizio: "Pratica ISEE / DSU", base: "€ 20,00", studio: "€ 35,00", iva: "Esclusivo CAF: No IVA" },
-        { area: "CAF & Fiscale", servizio: "Calcolo IMU, F24 e Tributi Locali", base: "Minimo € 20,00", studio: "€ 30,00", iva: "CAF: No | Studio: +IVA" },
-        { area: "CAF & Fiscale", servizio: "Ravvedimento Operoso / Rateizzazioni F24", base: "€ 20,00", studio: "€ 30,00", iva: "CAF: No | Studio: +IVA" },
-        { area: "CAF & Fiscale", servizio: "Pratica ENEA (Risparmio Energetico)", base: "€ 70,00", studio: "€ 70,00", iva: "+ IVA 22%" },
-        { area: "Locazioni", servizio: "Contratto di Locazione e Registrazione (RLI)", base: "€ 150,00", studio: "€ 200,00", iva: "+ IVA 22%" },
-        { area: "Locazioni", servizio: "Proroga, Cessione o Risoluzione Contratto", base: "€ 35,00", studio: "€ 50,00", iva: "+ IVA 22%" },
-        { area: "Successioni", servizio: "Dichiarazione di Successione + Voltura", base: "Su Preventivo", studio: "Su Preventivo", iva: "+ IVA 22%" },
-        { area: "Patronato", servizio: "DIS-COLL / NASpI / Maternità", base: "Gratuito (Ist.)", studio: "€ 30,00", iva: "+ IVA 22% (in studio)" },
-        { area: "Patronato", servizio: "Assegno Unico Universale", base: "Gratuito (Ist.)", studio: "€ 30,00", iva: "+ IVA 22% (in studio)" },
-        { area: "Patronato", servizio: "Domanda di Pensione", base: "€ 30,00", studio: "€ 50,00", iva: "+ IVA 22%" },
-        { area: "Previdenza", servizio: "Estratto Conto Contributivo", base: "€ 15,00", studio: "€ 20,00", iva: "+ IVA 22%" },
-        { area: "Previdenza", servizio: "Calcolo Pensioni e Riscatti", base: "€ 27,00", studio: "€ 50,00", iva: "+ IVA 22%" },
-        { area: "CED & Paghe", servizio: "Elaborazione Cedolino / Busta Paga", base: "€ 15,00", studio: "€ 30,00", iva: "+ IVA 22%" },
-        { area: "CED & Paghe", servizio: "Pratica Assunzione / Cessazione", base: "€ 50,00", studio: "€ 70,00", iva: "+ IVA 22%" },
-        { area: "CED & Paghe", servizio: "Pacchetto Completo Colf e Badanti (12 Mesi)", base: "€ 220,00", studio: "€ 220,00", iva: "+ IVA 22%" },
-        { area: "Immigrazione", servizio: "Rilascio / Rinnovo Permesso di Soggiorno", base: "—", studio: "€ 250,00 (+ costi)", iva: "+ IVA 22% (sull'onorario)" },
-        { area: "Legge 104 & Disabilità", servizio: "Legge 104 (Riconoscimento / Art. 3)", base: "Gratuito (Ist.)", studio: "€ 50,00", iva: "+ IVA 22% (in studio)" },
-        { area: "Legge 104 & Disabilità", servizio: "Permessi Legge 104 (Familiare Disabile)", base: "Gratuito (Ist.)", studio: "€ 45,00", iva: "+ IVA 22% (in studio)" },
-        { area: "Legge 104 & Disabilità", servizio: "Invalidità Civile / Inabilità / Accompagnamento", base: "Gratuito (Ist.)", studio: "€ 50,00", iva: "+ IVA 22% (in studio)" },
-        { area: "Flessibile", servizio: "Pratica Personalizzata / Altra Richiesta", base: "A misura", studio: "Importo libero", iva: "Secondo canale" }
-      ];
-
-      const salvaLocale = (lista) => {
-        setPratiche(lista);
-        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(lista)); } catch (e) {}
-      };
-      const salvaDelegheLocale = (lista) => {
-        setDelegheRegistrate(lista);
-        try { localStorage.setItem(DELEGHE_KEY, JSON.stringify(lista)); } catch (e) {}
-      };
-      const salvaSimulazioniLocale = (lista) => {
-        setSimulazioniSalvate(lista);
-        try { localStorage.setItem(PENSIONI_KEY, JSON.stringify(lista)); } catch (e) {}
-      };
-      const salvaInvaliditaLocale = (lista) => {
-        setPraticheInvalidita104(lista);
-        try { localStorage.setItem(INVALIDITA_KEY, JSON.stringify(lista)); } catch (e) {}
-      };
-      const salvaPrenotazioniLocale = (lista) => {
-        setPrenotazioni(lista);
-        try { localStorage.setItem(PRENOTAZIONI_KEY, JSON.stringify(lista)); } catch (e) {}
-      };
-      const salvaFasceLocale = (lista) => {
-        setFasceOrarie(lista);
-        try { localStorage.setItem(CONFIG_FASCE_KEY, JSON.stringify(lista)); } catch (e) {}
-      };
-      const salvaStoricoAnnateLocale = (lista) => {
-        setStoricoAnnate(lista);
-        try { localStorage.setItem(STORICO_ANNATE_KEY, JSON.stringify(lista)); } catch (e) {}
-      };
-      const salvaModuliAutonomiLocale = (lista) => {
-        setModuliAutonomi(lista);
-        try { localStorage.setItem(AUTONOMIA_KEY, JSON.stringify(lista)); } catch (e) {}
-      };
-
-      const etichettaAggiornamentoCorrente = () => {
-        const sede = currentProfile === 'brindisi' ? 'Brindisi' : 'Firenze';
-        const op = sessionUser?.email || (anteprimaLocaleAttiva ? 'Locale' : 'Sportello');
-        return `${new Date().toISOString().slice(0, 10)} • ${sede} (${op})`;
-      };
-
-      const impostaModuloAutonomoPreset = (subTab) => {
-        setAutonomiaSubTab(subTab);
-        if (subTab === 'dichiarativi') {
+      const impostaModuloAutonomoPreset = (preset) => {
+        setAutonomiaSubTab(preset);
+        if (preset === 'dichiarativi') {
           setAutoTipoModulo('Modello Redditi Tardivo / Ravvedimento');
-        } else if (subTab === 'paghe_lavoro') {
+        } else if (preset === 'paghe_lavoro') {
           setAutoTipoModulo('Cedolino / Assunzione / Colf & Badanti');
-        } else if (subTab === 'caf_adempimenti') {
+        } else if (preset === 'caf_adempimenti') {
           setAutoTipoModulo('Pratica CAF / Adempimento / Scadenza');
         }
       };
@@ -496,10 +442,14 @@
       const baseImp = Math.max(0, Number(autoImportoBase) || 0);
       const sanPct = Math.max(0, Number(autoAliquotaSanzione) || 0);
       const giorniRit = Math.max(0, Number(autoGiorniRitardo) || 0);
-      const tassoAnn = Math.max(0, Number(autoTassoInteresseAnnua) || 0);
+      const tassoAnnuo = Math.max(0, Number(autoTassoInteresseAnnua) || 0);
       const sanzioneStimata = baseImp * (sanPct / 100);
-      const interessiStimati = baseImp * (tassoAnn / 100) * (giorniRit / 365);
+      const interessiStimati = baseImp * (tassoAnnuo / 100) * (giorniRit / 365);
       const totaleRavvedimentoStimato = baseImp + sanzioneStimata + interessiStimati;
+
+      const isFirenze = currentProfile === 'mio_studio';
+      const isBrindisi = currentProfile === 'brindisi';
+      const isClienteIsolato = currentProfile === 'cliente_isolato';
 
       const salvaSchedaAutonoma = (inviaAncheInCoda = false) => {
         if (!autoCliente.trim()) {
@@ -629,6 +579,10 @@
       };
 
       useEffect(() => {
+        if (!supabaseClient) {
+          setAuthChecked(true);
+          return;
+        }
         let mounted = true;
         const initAuth = async () => {
           try {
@@ -654,7 +608,7 @@
       }, []);
 
       useEffect(() => {
-        if (!sessionUser) {
+        if (!supabaseClient || !sessionUser) {
           setDbStatus(anteprimaLocaleAttiva ? 'Anteprima Locale' : 'In attesa login');
           return;
         }
@@ -673,7 +627,11 @@
               setPratiche((prev) => {
                 const map = new Map();
                 [...data, ...prev].forEach((item) =>
-                  map.set(item.id, { ...PRATICHE_INIZIALI[0], ...item, allegati: Array.isArray(item.allegati) ? item.allegati : [] })
+                  map.set(item.id, {
+                    ...PRATICHE_INIZIALI[0],
+                    ...item,
+                    allegati: Array.isArray(item.allegati) ? item.allegati : []
+                  })
                 );
                 const merged = Array.from(map.values());
                 try { localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)); } catch (e) {}
@@ -690,6 +648,10 @@
       const effettuaLogin = async (e) => {
         e.preventDefault();
         setLoginError('');
+        if (!supabaseClient) {
+          setAnteprimaLocaleAttiva(true);
+          return;
+        }
         setLoginLoading(true);
         try {
           const { data, error } = await supabaseClient.auth.signInWithPassword({
@@ -711,12 +673,14 @@
       };
 
       const effettuaLogout = async () => {
-        try { await supabaseClient.auth.signOut(); } catch (e) {}
+        try {
+          if (supabaseClient) await supabaseClient.auth.signOut();
+        } catch (e) {}
         setSessionUser(null);
         setAnteprimaLocaleAttiva(false);
       };
 
-      const caricaFileSuArchivio = async (file, prefissoCartella = "pratica") => {
+      const caricaFileSuArchivio = async (file, prefissoCartella = 'pratica') => {
         if (!file) return null;
         if (file.size > 5 * 1024 * 1024) {
           alert('File troppo grande: usa un file fino a 5 MB.');
@@ -726,7 +690,7 @@
         const nomePulito = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
         const percorso = `${prefissoCartella}/${nomePulito}`;
         try {
-          if (sessionUser) {
+          if (supabaseClient && sessionUser) {
             const { error } = await supabaseClient.storage
               .from(STORAGE_BUCKET_PRIVATO)
               .upload(percorso, file, { upsert: false });
@@ -760,21 +724,18 @@
         };
       };
 
-      const isFirenze = currentProfile === 'mio_studio';
-      const isBrindisi = currentProfile === 'brindisi';
-      const isClienteIsolato = currentProfile === 'cliente_isolato';
-      const isPersonalizzata = nuovoServizio === "Pratica Personalizzata / Altra Richiesta";
+      const isPersonalizzata = nuovoServizio === 'Pratica Personalizzata / Altra Richiesta';
 
       const aggiungiVoceCu = () => {
         if (!cuSostituto.trim() && !cuRedditoRitenute.trim()) return;
-        setListaCuAnno([...listaCuAnno, { sostituto: cuSostituto.trim() || "Sostituto / Ente", dettaglio: cuRedditoRitenute.trim() || "CU registrata" }]);
+        setListaCuAnno([...listaCuAnno, { sostituto: cuSostituto.trim() || 'Sostituto / Ente', dettaglio: cuRedditoRitenute.trim() || 'CU registrata' }]);
         setCuSostituto('');
         setCuRedditoRitenute('');
       };
 
       const aggiungiVoceConto = () => {
         if (!contoIstituto.trim() && !contoSaldoGiacenza.trim()) return;
-        setListaContiAnno([...listaContiAnno, { istituto: contoIstituto.trim() || "Rapporto / Banca", dettaglio: contoSaldoGiacenza.trim() || "Saldo / giacenza registrata" }]);
+        setListaContiAnno([...listaContiAnno, { istituto: contoIstituto.trim() || 'Rapporto / Banca', dettaglio: contoSaldoGiacenza.trim() || 'Saldo / giacenza registrata' }]);
         setContoIstituto('');
         setContoSaldoGiacenza('');
       };
@@ -786,17 +747,17 @@
         }
         const cuFinali = [...listaCuAnno];
         if (cuSostituto.trim() || cuRedditoRitenute.trim()) {
-          cuFinali.push({ sostituto: cuSostituto.trim() || "Sostituto / Ente", dettaglio: cuRedditoRitenute.trim() || "CU registrata" });
+          cuFinali.push({ sostituto: cuSostituto.trim() || 'Sostituto / Ente', dettaglio: cuRedditoRitenute.trim() || 'CU registrata' });
         }
         const contiFinali = [...listaContiAnno];
         if (contoIstituto.trim() || contoSaldoGiacenza.trim()) {
-          contiFinali.push({ istituto: contoIstituto.trim() || "Rapporto / Banca", dettaglio: contoSaldoGiacenza.trim() || "Saldo / giacenza registrata" });
+          contiFinali.push({ istituto: contoIstituto.trim() || 'Rapporto / Banca', dettaglio: contoSaldoGiacenza.trim() || 'Saldo / giacenza registrata' });
         }
 
         const nuova = {
           id: Date.now(),
           cliente: annataCliente.trim(),
-          cf: annataCf.trim().toUpperCase() || "N/D",
+          cf: annataCf.trim().toUpperCase() || 'N/D',
           anno: Number(annoRiferimento) || 2025,
           protocolloDsu: protocolloDsu.trim(),
           attestazioneIsee: attestazioneIsee.trim(),
@@ -836,9 +797,9 @@
           cliente: record.cliente,
           cf: record.cf,
           anno: prossimoAnno,
-          protocolloDsu: "",
-          attestazioneIsee: "",
-          statoDsuIsee: "DSU da compilare / aggiornare",
+          protocolloDsu: '',
+          attestazioneIsee: '',
+          statoDsuIsee: 'DSU da compilare / aggiornare',
           cuList: cuRiportate,
           redditi: record.redditi ? `${record.redditi} [Base da ${record.anno}]` : `Base redditi da ${record.anno}`,
           contiList: contiRiportati,
@@ -849,8 +810,8 @@
       };
 
       const costruisciTestoAvviso = (p) => {
-        const dataRef = p.dataRevisione || "prossimamente";
-        const motivo = p.promemoria || p.archivioRevisione || "controllo / aggiornamento pratica";
+        const dataRef = p.dataRevisione || 'prossimamente';
+        const motivo = p.promemoria || p.archivioRevisione || 'controllo / aggiornamento pratica';
         return `Gentile ${p.cliente}, ti contattiamo dallo Studio (${p.sedeCompetenza}) in merito alla pratica "${p.servizio}". È prevista una revisione/aggiornamento (${motivo}) con data indicativa ${dataRef}.`;
       };
 
@@ -869,22 +830,21 @@
         }
       };
 
-      const oggiIso = new Date().toISOString().slice(0, 10);
       const praticheConRevisione = pratiche.filter(p => Boolean(p.dataRevisione) || Boolean(p.promemoria));
 
       const handleCheckCF = (val) => {
         setCfInput(val.toUpperCase());
-        setIseeAlert(val.length >= 16 ? "⚠️ ATTENZIONE: Risulta già una DSU presentata per questo Codice Fiscale. Applicare tariffa dedicata." : null);
+        setIseeAlert(val.length >= 16 ? '⚠️ ATTENZIONE: Risulta già una DSU presentata per questo Codice Fiscale. Applicare tariffa dedicata.' : null);
       };
 
       const generaAccessoSenzaSpid = () => {
         const randomPin = Math.floor(100000 + Math.random() * 900000);
         setGeneratedToken({
-          cliente: clienteNoSpidName || "Cliente da Sportello",
-          telefono: clienteNoSpidPhone || "Non inserito",
+          cliente: clienteNoSpidName || 'Cliente da Sportello',
+          telefono: clienteNoSpidPhone || 'Non inserito',
           pin: randomPin,
           link: `https://upload.studioflow.it/doc/${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
-          scadenza: "48 ore"
+          scadenza: '48 ore'
         });
       };
 
@@ -902,7 +862,7 @@
 
       const calcolaProssimaScadenzaRicalcolo = (dataBaseStr, anniFreq) => {
         const base = new Date(dataBaseStr || new Date());
-        if (isNaN(base.getTime())) return "N/D";
+        if (isNaN(base.getTime())) return 'N/D';
         const prossima = new Date(base);
         prossima.setFullYear(prossima.getFullYear() + Number(anniFreq || 5));
         return prossima.toISOString().slice(0, 10);
@@ -921,10 +881,10 @@
       const prossimaDataRicalcolo = calcolaProssimaScadenzaRicalcolo(dataUltimoRicalcolo, periodicitaAnni);
 
       const vociRiscattoSelezionate = [
-        riscattoLaurea ? "Laurea / studi" : null,
-        riscattoBuchiContributivi ? "Buchi contributivi" : null,
-        riscattoMaternitaCongedi ? "Maternità / congedi" : null,
-        riscattoServizioMilitare ? "Servizio militare" : null
+        riscattoLaurea ? 'Laurea / studi' : null,
+        riscattoBuchiContributivi ? 'Buchi contributivi' : null,
+        riscattoMaternitaCongedi ? 'Maternità / congedi' : null,
+        riscattoServizioMilitare ? 'Servizio militare' : null
       ].filter(Boolean);
 
       const salvaSimulazionePrevidenziale = () => {
@@ -932,11 +892,11 @@
         salvaSimulazioniLocale([{
           id: Date.now(),
           assistito: pensioneAssistito.trim(),
-          cf: pensioneCf.trim().toUpperCase() || "N/D",
+          cf: pensioneCf.trim().toUpperCase() || 'N/D',
           regime: regimeContributivo,
           contribuzione: formattaAnniMesi(contribuzioneDecimale),
           mancaStima: formattaAnniMesi(anniMancantiStimati),
-          riscatti: vociRiscattoSelezionate.join(", ") || "Nessuno",
+          riscatti: vociRiscattoSelezionate.join(', ') || 'Nessuno',
           noteRiscatto: noteRiscatto.trim(),
           ultimoRicalcolo: dataUltimoRicalcolo,
           periodicita: Number(periodicitaAnni || 5),
@@ -946,34 +906,34 @@
       };
 
       const inviaPromemoriaInCoda = () => {
-        const nome = pensioneAssistito.trim() || "Assistito Pensione";
+        const nome = pensioneAssistito.trim() || 'Assistito Pensione';
         salvaLocale([{
           id: Date.now(),
           clientId: pensioneCf.trim().toUpperCase() || `PEN${Date.now()}`,
-          sedeCompetenza: isBrindisi ? "Brindisi" : "Firenze",
-          perimetro: "Patronato / INPS",
-          modalitaEsecuzione: "Piattaforma Autonoma",
-          sistemaEsterno: "INPS",
-          protocolloEsterno: "",
+          sedeCompetenza: isBrindisi ? 'Brindisi' : 'Firenze',
+          perimetro: 'Patronato / INPS',
+          modalitaEsecuzione: 'Piattaforma Autonoma',
+          sistemaEsterno: 'INPS',
+          protocolloEsterno: '',
           cliente: nome,
-          telefono: "",
-          email: "",
+          telefono: '',
+          email: '',
           dataRevisione: prossimaDataRicalcolo,
-          tipoCliente: "Occasionale",
+          tipoCliente: 'Occasionale',
           quotaAssociativaPagata: false,
           quotaImporto: 0,
-          servizio: "Aggiornamento Contributivo & Pensione",
-          modalitaLavorazione: "Ufficio / Sportello",
-          canale: "Studio / Patronato",
+          servizio: 'Aggiornamento Contributivo & Pensione',
+          modalitaLavorazione: 'Ufficio / Sportello',
+          canale: 'Studio / Patronato',
           stato: `In sospeso - Ricalcolo ${prossimaDataRicalcolo}`,
-          semaforo: "giallo",
+          semaforo: 'giallo',
           imponibile: 20.00,
           iva: true,
           soloDocumenti: false,
           pagata: false,
           promemoria: `Ricalcolo ogni ${periodicitaAnni} anni -> ${prossimaDataRicalcolo}`,
           archivioPratica: `Versati: ${formattaAnniMesi(contribuzioneDecimale)}`,
-          archivioRevisione: `Riscatti: ${vociRiscattoSelezionate.join(", ") || "Da valutare"}. ${noteRiscatto}`,
+          archivioRevisione: `Riscatti: ${vociRiscattoSelezionate.join(', ') || 'Da valutare'}. ${noteRiscatto}`,
           archivioRicevute: `Controllo: ${dataUltimoRicalcolo}`,
           allegati: [],
           ultimoAggiornamento: etichettaAggiornamentoCorrente()
@@ -982,9 +942,9 @@
       };
 
       const checklistDocumentiInv = [
-        invCertificatoMedico ? "Certificato medico" : null,
-        invDocumentazioneSanitaria ? "Documentazione sanitaria / verbali" : null,
-        invDelegaAllegata ? "Delega / consenso" : null
+        invCertificatoMedico ? 'Certificato medico' : null,
+        invDocumentazioneSanitaria ? 'Documentazione sanitaria / verbali' : null,
+        invDelegaAllegata ? 'Delega / consenso' : null
       ].filter(Boolean);
 
       const salvaSchedaInvalidita104 = () => {
@@ -992,12 +952,12 @@
         salvaInvaliditaLocale([{
           id: Date.now(),
           assistito: invAssistito.trim(),
-          cf: invCf.trim().toUpperCase() || "N/D",
-          sede: isBrindisi ? "Brindisi" : "Firenze",
+          cf: invCf.trim().toUpperCase() || 'N/D',
+          sede: isBrindisi ? 'Brindisi' : 'Firenze',
           tipologia: invTipologia,
           faseIter: invFaseIter,
           familiare: invFamiliare.trim(),
-          documenti: checklistDocumentiInv.join(", ") || "Da completare",
+          documenti: checklistDocumentiInv.join(', ') || 'Da completare',
           dataRevisione: invDataRevisione,
           note: invNote.trim()
         }, ...praticheInvalidita104]);
@@ -1005,36 +965,36 @@
       };
 
       const inviaSchedaInvaliditaInCoda = () => {
-        const nome = invAssistito.trim() || "Assistito Invalidità / 104";
-        const voceServizio = invTipologia.includes("Permessi")
-          ? "Permessi Legge 104 (Familiare Disabile)"
-          : (invTipologia.includes("104") ? "Legge 104 (Riconoscimento / Art. 3)" : "Invalidità Civile / Inabilità / Accompagnamento");
+        const nome = invAssistito.trim() || 'Assistito Invalidità / 104';
+        const voceServizio = invTipologia.includes('Permessi')
+          ? 'Permessi Legge 104 (Familiare Disabile)'
+          : (invTipologia.includes('104') ? 'Legge 104 (Riconoscimento / Art. 3)' : 'Invalidità Civile / Inabilità / Accompagnamento');
         salvaLocale([{
           id: Date.now(),
           clientId: invCf.trim().toUpperCase() || `INV${Date.now()}`,
-          sedeCompetenza: isBrindisi ? "Brindisi" : "Firenze",
-          perimetro: "Patronato / INPS",
-          modalitaEsecuzione: "Piattaforma Autonoma",
-          sistemaEsterno: "INPS",
-          protocolloEsterno: "",
+          sedeCompetenza: isBrindisi ? 'Brindisi' : 'Firenze',
+          perimetro: 'Patronato / INPS',
+          modalitaEsecuzione: 'Piattaforma Autonoma',
+          sistemaEsterno: 'INPS',
+          protocolloEsterno: '',
           cliente: nome,
-          telefono: "",
-          email: "",
+          telefono: '',
+          email: '',
           dataRevisione: invDataRevisione,
-          tipoCliente: "Occasionale",
+          tipoCliente: 'Occasionale',
           quotaAssociativaPagata: false,
           quotaImporto: 0,
           servizio: `${voceServizio} (${invTipologia})`,
-          modalitaLavorazione: "Ufficio / Sportello",
-          canale: "Patronato / Studio",
+          modalitaLavorazione: 'Ufficio / Sportello',
+          canale: 'Patronato / Studio',
           stato: `Iter: ${invFaseIter}`,
-          semaforo: invDataRevisione ? "giallo" : "verde",
+          semaforo: invDataRevisione ? 'giallo' : 'verde',
           imponibile: TARIFFE_SERVIZI[voceServizio] ?? 45.00,
           iva: true,
           soloDocumenti: false,
           pagata: false,
-          promemoria: invDataRevisione ? `Revisione: ${invDataRevisione}` : "",
-          archivioPratica: `Doc: ${checklistDocumentiInv.join(", ")}${invFamiliare ? ` | Familiare: ${invFamiliare}` : ""}`,
+          promemoria: invDataRevisione ? `Revisione: ${invDataRevisione}` : '',
+          archivioPratica: `Doc: ${checklistDocumentiInv.join(', ')}${invFamiliare ? ` | Familiare: ${invFamiliare}` : ''}`,
           archivioRevisione: invNote.trim(),
           archivioRicevute: `Fase: ${invFaseIter}`,
           allegati: [],
@@ -1050,7 +1010,7 @@
         if (!prenNome.trim()) return alert('Inserisci nome e cognome.');
         const fasciaObj = fasceOrarie.find(f => f.id === prenFascia) || fasceOrarie[0];
         if (occupatiInFascia(prenData, fasciaObj.id) >= fasciaObj.maxPosti) return alert('Fascia completa.');
-        const sedeScelta = isBrindisi ? "Brindisi" : "Firenze";
+        const sedeScelta = isBrindisi ? 'Brindisi' : 'Firenze';
         const nuovaPren = {
           id: Date.now(),
           cliente: prenNome.trim(),
@@ -1070,22 +1030,22 @@
             id: Date.now() + 1,
             clientId: `PRN${Date.now().toString().slice(-6)}`,
             sedeCompetenza: sedeScelta,
-            perimetro: "Sportello / Prenotazioni",
-            modalitaEsecuzione: "Piattaforma Autonoma",
-            sistemaEsterno: "QWeb",
-            protocolloEsterno: "",
+            perimetro: 'Sportello / Prenotazioni',
+            modalitaEsecuzione: 'Piattaforma Autonoma',
+            sistemaEsterno: 'QWeb',
+            protocolloEsterno: '',
             cliente: prenNome.trim(),
             telefono: prenTelefono.trim(),
             email: prenEmail.trim(),
             dataRevisione: prenData,
-            tipoCliente: "Occasionale",
+            tipoCliente: 'Occasionale',
             quotaAssociativaPagata: false,
             quotaImporto: 0,
             servizio: `${prenServizio} (${prenData} ${fasciaObj.etichetta})`,
-            modalitaLavorazione: "Appuntamento Sportello",
-            canale: "Prenotazione",
+            modalitaLavorazione: 'Appuntamento Sportello',
+            canale: 'Prenotazione',
             stato: `Prenotato ${prenData}`,
-            semaforo: "verde",
+            semaforo: 'verde',
             imponibile: TARIFFE_SERVIZI[prenServizio] ?? 30.00,
             iva: true,
             soloDocumenti: false,
@@ -1093,7 +1053,7 @@
             promemoria: prenNote.trim(),
             archivioPratica: `Appuntamento ${prenData} ${fasciaObj.etichetta}`,
             archivioRevisione: prenNote.trim(),
-            archivioRicevute: "",
+            archivioRicevute: '',
             allegati: [],
             ultimoAggiornamento: etichettaAggiornamentoCorrente()
           }, ...pratiche]);
@@ -1125,9 +1085,9 @@
       };
 
       const impostaInSospesoNelModale = () => {
-        setEditStato("In sospeso - In attesa integrazione");
-        setEditSemaforo("giallo");
-        if (!editPromemoria.trim()) setEditPromemoria("In sospeso per integrazione / verifica");
+        setEditStato('In sospeso - In attesa integrazione');
+        setEditSemaforo('giallo');
+        if (!editPromemoria.trim()) setEditPromemoria('In sospeso per integrazione / verifica');
       };
 
       const salvaModifichePratica = async () => {
@@ -1152,7 +1112,7 @@
           allegati: editAllegati,
           ultimoAggiornamento: etichettaAggiornamentoCorrente()
         };
-        if (sessionUser) {
+        if (supabaseClient && sessionUser) {
           try {
             await supabaseClient.from('Pratiche').update({
               imponibile: aggiornata.imponibile,
@@ -1160,7 +1120,14 @@
               semaforo: aggiornata.semaforo,
               iva: aggiornata.iva,
               pagata: aggiornata.pagata,
-              promemoria: aggiornata.promemoria
+              promemoria: aggiornata.promemoria,
+              modalitaEsecuzione: aggiornata.modalitaEsecuzione,
+              sistemaEsterno: aggiornata.sistemaEsterno,
+              protocolloEsterno: aggiornata.protocolloEsterno,
+              archivioPratica: aggiornata.archivioPratica,
+              archivioRicevute: aggiornata.archivioRicevute,
+              allegati: aggiornata.allegati,
+              ultimoAggiornamento: aggiornata.ultimoAggiornamento
             }).eq('id', aggiornata.id);
           } catch (e) {}
         }
@@ -1171,15 +1138,22 @@
       const toggleIncassoRapido = async (p) => {
         const nuovoStatoPagata = !p.pagata;
         const nuovoTestoStato = nuovoStatoPagata ? `Chiusa e Incassata (${p.sedeCompetenza})` : `Pronta per chiusura e incasso (${p.sedeCompetenza})`;
-        if (sessionUser) {
-          try { await supabaseClient.from('Pratiche').update({ pagata: nuovoStatoPagata, stato: nuovoTestoStato }).eq('id', p.id); } catch (e) {}
+        const aggData = etichettaAggiornamentoCorrente();
+        if (supabaseClient && sessionUser) {
+          try {
+            await supabaseClient.from('Pratiche').update({
+              pagata: nuovoStatoPagata,
+              stato: nuovoTestoStato,
+              ultimoAggiornamento: aggData
+            }).eq('id', p.id);
+          } catch (e) {}
         }
-        salvaLocale(pratiche.map(item => item.id === p.id ? { ...item, pagata: nuovoStatoPagata, stato: nuovoTestoStato, semaforo: 'verde', ultimoAggiornamento: etichettaAggiornamentoCorrente() } : item));
+        salvaLocale(pratiche.map(item => item.id === p.id ? { ...item, pagata: nuovoStatoPagata, stato: nuovoTestoStato, semaforo: 'verde', ultimoAggiornamento: aggData } : item));
       };
 
       const eliminaPratica = async (id) => {
         if (!window.confirm('Eliminare definitivamente questa pratica?')) return;
-        if (sessionUser) {
+        if (supabaseClient && sessionUser) {
           try { await supabaseClient.from('Pratiche').delete().eq('id', id); } catch (e) {}
         }
         salvaLocale(pratiche.filter(p => p.id !== id));
@@ -1187,15 +1161,26 @@
       };
 
       const interrompiPromemoria = (id) => {
-        salvaLocale(pratiche.map(p => p.id === id ? { ...p, promemoria: "", stato: "Pronta per ripresa", semaforo: "verde", ultimoAggiornamento: etichettaAggiornamentoCorrente() } : p));
+        salvaLocale(pratiche.map(p => p.id === id ? { ...p, promemoria: '', stato: 'Pronta per ripresa', semaforo: 'verde', ultimoAggiornamento: etichettaAggiornamentoCorrente() } : p));
       };
 
       const approvaPreventivoSuccessione = (id) => {
-        salvaLocale(pratiche.map(p => p.id === id ? { ...p, preventivoAccettato: true, stato: "Preventivo Accettato", semaforo: "verde", ultimoAggiornamento: etichettaAggiornamentoCorrente() } : p));
+        salvaLocale(pratiche.map(p => p.id === id ? { ...p, preventivoAccettato: true, stato: 'Preventivo Accettato', semaforo: 'verde', ultimoAggiornamento: etichettaAggiornamentoCorrente() } : p));
       };
 
-      const spostaSedePratica = (id, nuovaSede) => {
-        salvaLocale(pratiche.map(p => p.id === id ? { ...p, sedeCompetenza: nuovaSede, stato: `Inoltrata a ${nuovaSede}`, ultimoAggiornamento: etichettaAggiornamentoCorrente() } : p));
+      const spostaSedePratica = async (id, nuovaSede) => {
+        const nuovoStato = `Inoltrata a ${nuovaSede}`;
+        const aggData = etichettaAggiornamentoCorrente();
+        if (supabaseClient && sessionUser) {
+          try {
+            await supabaseClient.from('Pratiche').update({
+              sedeCompetenza: nuovaSede,
+              stato: nuovoStato,
+              ultimoAggiornamento: aggData
+            }).eq('id', id);
+          } catch (e) {}
+        }
+        salvaLocale(pratiche.map(p => p.id === id ? { ...p, sedeCompetenza: nuovaSede, stato: nuovoStato, ultimoAggiornamento: aggData } : p));
         setShowModal(false);
       };
 
@@ -1206,7 +1191,7 @@
       };
 
       const calcolaAnteprimaTotaleNuovaPratica = () => {
-        if (soloCaricamentoDocumenti) return "0.00";
+        if (soloCaricamentoDocumenti) return '0.00';
         const imponibile = calcolaImponibileNuovaPratica();
         const ivaAmount = nuovoCanaleIva === 'studio' ? imponibile * 0.22 : 0;
         const quotaDaPagare = (nuovoTipoCliente === 'Convenzionato' && aggiungiQuotaAssociativa) ? 25.00 : 0;
@@ -1216,22 +1201,22 @@
       const aggiungiNuovaPratica = async () => {
         if (!nuovoClienteNome.trim()) return alert('Inserisci nome e cognome del cliente.');
         const servizioFinale = soloCaricamentoDocumenti
-          ? "Solo Inserimento Documenti"
-          : (isPersonalizzata ? (nomeServizioPersonalizzato.trim() || "Pratica Personalizzata") : nuovoServizio);
+          ? 'Solo Inserimento Documenti'
+          : (isPersonalizzata ? (nomeServizioPersonalizzato.trim() || 'Pratica Personalizzata') : nuovoServizio);
         const hasIva = !soloCaricamentoDocumenti && nuovoCanaleIva === 'studio';
         const imponibileCalcolato = calcolaImponibileNuovaPratica();
         const quotaImportoCalcolato = (nuovoTipoCliente === 'Convenzionato' && aggiungiQuotaAssociativa) ? 25.00 : 0;
         const incassataSubito = soloCaricamentoDocumenti || nuovaPagataSubito;
         const perimetroCalcolato = soloCaricamentoDocumenti
-          ? "CAF / DSU-ISEE"
-          : (servizioFinale.includes("104") || servizioFinale.includes("Invalidità") || servizioFinale.includes("Pensione")
-            ? "Patronato / INPS"
-            : (servizioFinale.includes("Cedolino") || servizioFinale.includes("Colf") ? "CED / Lavoro" : "Studio / Fiscale"));
+          ? 'CAF / DSU-ISEE'
+          : (servizioFinale.includes('104') || servizioFinale.includes('Invalidità') || servizioFinale.includes('Pensione')
+            ? 'Patronato / INPS'
+            : (servizioFinale.includes('Cedolino') || servizioFinale.includes('Colf') ? 'CED / Lavoro' : 'Studio / Fiscale'));
 
         const nuova = {
           id: Date.now(),
           clientId: nuovoClienteCf.trim().toUpperCase() || `CLI${Date.now()}`,
-          sedeCompetenza: isBrindisi ? "Brindisi" : "Firenze",
+          sedeCompetenza: isBrindisi ? 'Brindisi' : 'Firenze',
           perimetro: perimetroCalcolato,
           modalitaEsecuzione: nuovaModalitaEsecuzione,
           sistemaEsterno: nuovoSistemaEsterno,
@@ -1244,15 +1229,15 @@
           quotaAssociativaPagata: nuovoTipoCliente === 'Convenzionato' ? !aggiungiQuotaAssociativa : false,
           quotaImporto: quotaImportoCalcolato,
           servizio: servizioFinale,
-          modalitaLavorazione: "Ufficio / Sportello",
-          canale: soloCaricamentoDocumenti ? "App / Link No-SPID" : (hasIva ? "Studio Commercialista" : "Esclusivo CAF"),
-          stato: incassataSubito ? "Chiusa e Incassata" : (nuovaInSospeso ? "In sospeso" : "Pronta per lavorazione"),
-          semaforo: (nuovaInSospeso || nuovoPromemoria || nuovaDataRevisione) ? "giallo" : "verde",
+          modalitaLavorazione: 'Ufficio / Sportello',
+          canale: soloCaricamentoDocumenti ? 'App / Link No-SPID' : (hasIva ? 'Studio Commercialista' : 'Esclusivo CAF'),
+          stato: incassataSubito ? 'Chiusa e Incassata' : (nuovaInSospeso ? 'In sospeso' : 'Pronta per lavorazione'),
+          semaforo: (nuovaInSospeso || nuovoPromemoria || nuovaDataRevisione) ? 'giallo' : 'verde',
           imponibile: imponibileCalcolato,
           iva: hasIva,
           soloDocumenti: soloCaricamentoDocumenti,
           pagata: incassataSubito,
-          promemoria: nuovoPromemoria || (nuovaInSospeso ? "Pratica in sospeso" : ""),
+          promemoria: nuovoPromemoria || (nuovaInSospeso ? 'Pratica in sospeso' : ''),
           archivioPratica: nuovoArchivioPratica,
           archivioRevisione: nuovoArchivioRevisione,
           archivioRicevute: nuovoArchivioRicevute,
@@ -1260,22 +1245,9 @@
           ultimoAggiornamento: etichettaAggiornamentoCorrente()
         };
 
-        if (sessionUser) {
+        if (supabaseClient && sessionUser) {
           try {
-            await supabaseClient.from('Pratiche').insert([{
-              clientId: nuova.clientId,
-              sedeCompetenza: nuova.sedeCompetenza,
-              cliente: nuova.cliente,
-              tipoCliente: nuova.tipoCliente,
-              servizio: nuova.servizio,
-              canale: nuova.canale,
-              stato: nuova.stato,
-              imponibile: nuova.imponibile,
-              iva: nuova.iva,
-              soloDocumenti: nuova.soloDocumenti,
-              pagata: nuova.pagata,
-              promemoria: nuova.promemoria
-            }]);
+            await supabaseClient.from('Pratiche').insert([nuova]);
           } catch (e) {}
         }
 
@@ -1292,8 +1264,8 @@
         salvaDelegheLocale([{
           id: Date.now(),
           assistito: delegaAssistitoNome.trim(),
-          cf: delegaAssistitoCf.trim().toUpperCase() || "N/D",
-          sede: isBrindisi ? "Brindisi" : "Firenze",
+          cf: delegaAssistitoCf.trim().toUpperCase() || 'N/D',
+          sede: isBrindisi ? 'Brindisi' : 'Firenze',
           ambito: delegaAmbito,
           note: delegaNote.trim(),
           data: new Date().toISOString().slice(0, 10)
@@ -1302,7 +1274,7 @@
       };
 
       const calcolaTotale = (p) => {
-        if (p.soloDocumenti) return "0.00";
+        if (p.soloDocumenti) return '0.00';
         const imponibile = Number(p.imponibile || 0);
         const ivaAmount = p.iva ? imponibile * 0.22 : 0;
         const quotaDaPagare = (p.tipoCliente === 'Convenzionato' && !p.quotaAssociativaPagata) ? Number(p.quotaImporto || 25) : 0;
@@ -1310,7 +1282,7 @@
       };
 
       const praticheFiltrate = (isClienteIsolato
-        ? pratiche.filter(p => p.clientId === "RSSMRA80A01D612K")
+        ? pratiche.filter(p => p.clientId === 'RSSMRA80A01D612K')
         : pratiche
       ).filter((p) => {
         if (isClienteIsolato) return true;
@@ -1335,19 +1307,19 @@
 
       const generaCsvFlusso = () => {
         const righe = [
-          "ID;Sede;Perimetro;ModalitaEsecuzione;SistemaEsterno;ProtocolloEsterno;Cliente;CF;Telefono;Email;DataRevisione;Servizio;Canale;Stato;Imponibile;IVA;Totale;Pagata;ArchivioPratica;ArchivioRevisione;ArchivioRicevute;UltimoAggiornamento",
+          'ID;Sede;Perimetro;ModalitaEsecuzione;SistemaEsterno;ProtocolloEsterno;Cliente;CF;Telefono;Email;DataRevisione;Servizio;Canale;Stato;Imponibile;IVA;Totale;Pagata;ArchivioPratica;ArchivioRevisione;ArchivioRicevute;UltimoAggiornamento',
           ...pratiche.map(p => [
             p.id, p.sedeCompetenza, `"${(p.perimetro || '').replace(/"/g, '""')}"`, `"${(p.modalitaEsecuzione || 'Piattaforma Autonoma').replace(/"/g, '""')}"`,
             `"${(p.sistemaEsterno || '').replace(/"/g, '""')}"`, `"${(p.protocolloEsterno || '').replace(/"/g, '""')}"`,
-            `"${(p.cliente || '').replace(/"/g, '""')}"`, p.clientId || "", `"${(p.telefono || '').replace(/"/g, '""')}"`, `"${(p.email || '').replace(/"/g, '""')}"`,
-            p.dataRevisione || "", `"${(p.servizio || '').replace(/"/g, '""')}"`, `"${(p.canale || '').replace(/"/g, '""')}"`,
-            `"${(p.stato || '').replace(/"/g, '""')}"`, Number(p.imponibile || 0).toFixed(2), p.iva ? "22%" : "NO/ESENTE",
-            calcolaTotale(p), p.pagata ? "SI" : "NO", `"${(p.archivioPratica || '').replace(/"/g, '""')}"`,
+            `"${(p.cliente || '').replace(/"/g, '""')}"`, p.clientId || '', `"${(p.telefono || '').replace(/"/g, '""')}"`, `"${(p.email || '').replace(/"/g, '""')}"`,
+            p.dataRevisione || '', `"${(p.servizio || '').replace(/"/g, '""')}"`, `"${(p.canale || '').replace(/"/g, '""')}"`,
+            `"${(p.stato || '').replace(/"/g, '""')}"`, Number(p.imponibile || 0).toFixed(2), p.iva ? '22%' : 'NO/ESENTE',
+            calcolaTotale(p), p.pagata ? 'SI' : 'NO', `"${(p.archivioPratica || '').replace(/"/g, '""')}"`,
             `"${(p.archivioRevisione || '').replace(/"/g, '""')}"`, `"${(p.archivioRicevute || '').replace(/"/g, '""')}"`,
             `"${(p.ultimoAggiornamento || '').replace(/"/g, '""')}"`
-          ].join(";"))
+          ].join(';'))
         ];
-        return righe.join("\n");
+        return righe.join('\n');
       };
 
       const generaRiepilogoEmissioneUfficiale = () => {
@@ -1355,12 +1327,12 @@
         const righe = [
           "PROSPETTO RIEPILOGATIVO PER EMISSIONE UFFICIALE / CONTABILITA' (FIRENZE)",
           `Data: ${new Date().toISOString().slice(0, 10)} | Incassato: € ${totaleIncassatoFirenze.toFixed(2)} | Da incassare: € ${totaleDaIncassareFirenze.toFixed(2)}`,
-          "-------------------------------------------------------------------------",
+          '-------------------------------------------------------------------------',
           ...daEmettere.map(p =>
             `[${p.pagata ? 'INCASSATA' : 'APERTA'}] ${p.cliente} (CF: ${p.clientId}) | ${p.servizio} | Modalità: ${p.modalitaEsecuzione || 'Piattaforma Autonoma'} (${p.sistemaEsterno || '-'}) | Prot.: ${p.protocolloEsterno || '-'} | Totale: € ${calcolaTotale(p)}`
           )
         ];
-        return righe.join("\n");
+        return righe.join('\n');
       };
 
       const scaricaFileTesto = (nomeFile, contenuto) => {
@@ -1434,7 +1406,7 @@
                 <>
                   <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.ade, 'Agenzia delle Entrate')} style={{ background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.22)', padding: '6px 9px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🏛️ AdE</button>
                   <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.inps, 'INPS')} style={{ background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.22)', padding: '6px 9px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🏛️ INPS</button>
-                  <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.desktopTelematico, 'Desktop Telematico')} style={{ background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.22)', padding: '6px 9px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🖥️ Desktop Tel.</button>
+                  <button type="button" onClick={() => apriPortaleEsterno(localiSedeCorrente.desktopTelematico, 'Desktop Telematico')} style={{ background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.22)', padding: '6px 9px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🖥️ Desktop Tel.</button>
                   <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.inail, 'INAIL')} style={{ background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.22)', padding: '6px 9px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🛡️ INAIL</button>
                   <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.cassaEdile, 'Cassa Edile')} style={{ background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.22)', padding: '6px 9px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🏗️ Cassa Edile</button>
                   <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.qweb, 'QWeb')} style={{ background: '#1d4ed8', color: '#fff', border: '1px solid rgba(255,255,255,0.25)', padding: '6px 9px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🌐 QWeb</button>
@@ -1510,7 +1482,7 @@
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
                       <div>
-                        <h3 style={{ margin: 0 }}>{isBrindisi ? "Cruscotto Sede Brindisi" : "Cruscotto Operativo Studio Firenze"}</h3>
+                        <h3 style={{ margin: 0 }}>{isBrindisi ? 'Cruscotto Sede Brindisi' : 'Cruscotto Operativo Studio Firenze'}</h3>
                         <p style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: '13px' }}>Scegli per ogni pratica tra <strong>Piattaforma Autonoma</strong> e <strong>Gestionale / Portale Esterno</strong>, tracciando lavorazione interna e protocolli.</p>
                       </div>
                       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
@@ -1628,19 +1600,19 @@
                       <div>
                         <h3 style={{ margin: 0 }}>⚙️ Suite Autonoma Interna & Collegamenti Portali / Applicativi</h3>
                         <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#64748b' }}>
-                          Gestione autonoma interna + collegamenti rapidi a <strong>AdE</strong>, <strong>INPS</strong>, <strong>Desktop Telematico</strong>, <strong>INAIL</strong>, <strong>Cassa Edile</strong>, <strong>QWeb</strong>, <strong>Cesac</strong>, <strong>WinCoge</strong> e <strong>Paghe Open</strong>.
+                          Sede attiva: <strong>{chiaveSedeCorrente === 'brindisi' ? 'Brindisi' : 'Firenze'}</strong>. <strong>Desktop Telematico</strong>, <strong>WinCoge</strong> e <strong>Paghe Open</strong> sono configurabili in autonomia per singola sede.
                         </p>
                       </div>
                       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                         <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.ade, 'Agenzia delle Entrate')} style={{ background: '#1e293b', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🏛️ AdE</button>
                         <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.inps, 'INPS')} style={{ background: '#1e293b', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🏛️ INPS</button>
-                        <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.desktopTelematico, 'Desktop Telematico')} style={{ background: '#1e293b', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🖥️ Desktop Tel.</button>
                         <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.inail, 'INAIL')} style={{ background: '#1e293b', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🛡️ INAIL</button>
                         <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.cassaEdile, 'Cassa Edile')} style={{ background: '#1e293b', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🏗️ Cassa Edile</button>
                         <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.qweb, 'QWeb')} style={{ background: '#1d4ed8', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🌐 QWeb</button>
                         <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.cesac, 'Cesac')} style={{ background: '#0369a1', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🌐 Cesac</button>
-                        <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.wincoge, 'WinCoge')} style={{ background: '#475569', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>💻 WinCoge</button>
-                        <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.pagheOpen, 'Paghe Open')} style={{ background: '#475569', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>💻 Paghe Open</button>
+                        <button type="button" onClick={() => apriPortaleEsterno(localiSedeCorrente.desktopTelematico, 'Desktop Telematico')} style={{ background: '#334155', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🖥️ Desktop Tel.</button>
+                        <button type="button" onClick={() => apriPortaleEsterno(localiSedeCorrente.wincoge, 'WinCoge')} style={{ background: '#475569', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>💻 WinCoge</button>
+                        <button type="button" onClick={() => apriPortaleEsterno(localiSedeCorrente.pagheOpen, 'Paghe Open')} style={{ background: '#475569', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>💻 Paghe Open</button>
                       </div>
                     </div>
 
@@ -1659,28 +1631,47 @@
                     </div>
 
                     {autonomiaSubTab === 'portali_config' ? (
-                      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '14px' }}>
-                        <div style={{ fontSize: '13px', fontWeight: '700', marginBottom: '6px' }}>🔗 Configurazione URL Portali & Applicativi (WinCoge / Paghe Open)</div>
-                        <p style={{ fontSize: '12px', color: '#475569', marginTop: 0 }}>
-                          Per <strong>WinCoge</strong> e <strong>Paghe Open</strong> (se usati in versione web/remota o tramite link dedicato), puoi incollare qui il relativo indirizzo URL; i portali istituzionali sono già preimpostati.
-                        </p>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '10px' }}>
-                          {[
-                            ['ade', 'Agenzia delle Entrate'],
-                            ['inps', 'INPS'],
-                            ['desktopTelematico', 'Desktop Telematico'],
-                            ['inail', 'INAIL'],
-                            ['cassaEdile', 'Cassa Edile'],
-                            ['qweb', 'QWeb Cloud'],
-                            ['cesac', 'Cesac Gestionale'],
-                            ['wincoge', 'WinCoge (URL / percorso web)'],
-                            ['pagheOpen', 'Paghe Open (URL / percorso web)']
-                          ].map(([k, lbl]) => (
-                            <label key={k} style={{ fontSize: '12px' }}>
-                              <strong>{lbl}</strong>
-                              <input type="text" value={portaliUrls[k] || ''} onChange={(e) => salvaPortaliUrls({ ...portaliUrls, [k]: e.target.value })} placeholder="https://..." style={{ width: '100%', padding: '6px 8px', marginTop: '3px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box', fontSize: '12px' }} />
+                      <div>
+                        <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '14px', marginBottom: '14px' }}>
+                          <div style={{ fontSize: '13px', fontWeight: '700', marginBottom: '6px', color: '#1e3a8a' }}>
+                            💻 Applicativi & Desktop Telematico — Sede Attiva: {chiaveSedeCorrente === 'brindisi' ? 'Brindisi' : 'Firenze'}
+                          </div>
+                          <p style={{ fontSize: '12px', color: '#334155', marginTop: 0 }}>
+                            Ogni sede può impostare in autonomia il proprio riferimento/URL per <strong>Desktop Telematico</strong>, <strong>WinCoge</strong> e <strong>Paghe Open</strong> (senza sovrascrivere quello delle altre sedi).
+                          </p>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '10px' }}>
+                            <label style={{ fontSize: '12px' }}>
+                              <strong>Desktop Telematico ({chiaveSedeCorrente === 'brindisi' ? 'Brindisi' : 'Firenze'})</strong>
+                              <input type="text" value={localiSedeCorrente.desktopTelematico || ''} onChange={(e) => salvaLocaliSedeCorrente({ desktopTelematico: e.target.value })} placeholder="URL o nota postazione sede..." style={{ width: '100%', padding: '6px 8px', marginTop: '3px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box', fontSize: '12px', background: '#fff' }} />
                             </label>
-                          ))}
+                            <label style={{ fontSize: '12px' }}>
+                              <strong>WinCoge ({chiaveSedeCorrente === 'brindisi' ? 'Brindisi' : 'Firenze'})</strong>
+                              <input type="text" value={localiSedeCorrente.wincoge || ''} onChange={(e) => salvaLocaliSedeCorrente({ wincoge: e.target.value })} placeholder="URL o riferimento sede..." style={{ width: '100%', padding: '6px 8px', marginTop: '3px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box', fontSize: '12px', background: '#fff' }} />
+                            </label>
+                            <label style={{ fontSize: '12px' }}>
+                              <strong>Paghe Open ({chiaveSedeCorrente === 'brindisi' ? 'Brindisi' : 'Firenze'})</strong>
+                              <input type="text" value={localiSedeCorrente.pagheOpen || ''} onChange={(e) => salvaLocaliSedeCorrente({ pagheOpen: e.target.value })} placeholder="URL o riferimento sede..." style={{ width: '100%', padding: '6px 8px', marginTop: '3px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box', fontSize: '12px', background: '#fff' }} />
+                            </label>
+                          </div>
+                        </div>
+
+                        <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '14px' }}>
+                          <div style={{ fontSize: '13px', fontWeight: '700', marginBottom: '6px' }}>🌐 Portali Web Condivisi</div>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '10px' }}>
+                            {[
+                              ['ade', 'Agenzia delle Entrate'],
+                              ['inps', 'INPS'],
+                              ['inail', 'INAIL'],
+                              ['cassaEdile', 'Cassa Edile'],
+                              ['qweb', 'QWeb Cloud'],
+                              ['cesac', 'Cesac Gestionale']
+                            ].map(([k, lbl]) => (
+                              <label key={k} style={{ fontSize: '12px' }}>
+                                <strong>{lbl}</strong>
+                                <input type="text" value={portaliUrls[k] || ''} onChange={(e) => salvaPortaliUrls({ ...portaliUrls, [k]: e.target.value })} placeholder="https://..." style={{ width: '100%', padding: '6px 8px', marginTop: '3px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box', fontSize: '12px', background: '#fff' }} />
+                              </label>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     ) : autonomiaSubTab === 'import_csv' ? (
@@ -1876,6 +1867,9 @@
                       <label><input type="checkbox" checked={riscattoMaternitaCongedi} onChange={(e) => setRiscattoMaternitaCongedi(e.target.checked)} /> Maternità / congedi</label>
                       <label><input type="checkbox" checked={riscattoServizioMilitare} onChange={(e) => setRiscattoServizioMilitare(e.target.checked)} /> Servizio militare</label>
                     </div>
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '12px' }}>
+                      <input type="text" value={noteRiscatto} onChange={(e) => setNoteRiscatto(e.target.value)} placeholder="Note riscatto / posizione contributiva..." style={{ flex: '1 1 240px', padding: '7px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px' }} />
+                    </div>
                     <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '14px', alignItems: 'center' }}>
                       <input type="date" value={dataUltimoRicalcolo} onChange={(e) => setDataUltimoRicalcolo(e.target.value)} style={{ padding: '7px' }} />
                       <select value={periodicitaAnni} onChange={(e) => setPeriodicitaAnni(Number(e.target.value))} style={{ padding: '7px' }}>
@@ -1915,6 +1909,7 @@
                     <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '14px' }}>
                       <input type="text" value={invFamiliare} onChange={(e) => setInvFamiliare(e.target.value)} placeholder="Familiare disabile..." style={{ flex: '1 1 200px', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px' }} />
                       <input type="date" value={invDataRevisione} onChange={(e) => setInvDataRevisione(e.target.value)} style={{ padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px' }} />
+                      <input type="text" value={invNote} onChange={(e) => setInvNote(e.target.value)} placeholder="Note pratica..." style={{ flex: '1 1 200px', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px' }} />
                       <button type="button" onClick={salvaSchedaInvalidita104} style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '5px', cursor: 'pointer', fontSize: '12px' }}>💾 Salva</button>
                       <button type="button" onClick={inviaSchedaInvaliditaInCoda} style={{ background: '#059669', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '5px', cursor: 'pointer', fontSize: '12px' }}>📥 Invia in Coda</button>
                     </div>
@@ -1950,6 +1945,7 @@
                         <option value="Delega Fiscale & Dichiarativi">Delega Fiscale & Dichiarativi</option>
                         <option value="Delega Previdenziale INPS">Delega Previdenziale INPS</option>
                       </select>
+                      <input type="text" value={delegaNote} onChange={(e) => setDelegaNote(e.target.value)} placeholder="Note delega..." style={{ padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '13px' }} />
                       <button onClick={registraDelegaFapi} style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>+ Registra Delega</button>
                     </div>
                     {delegheRegistrate.map((d) => <div key={d.id} style={{ fontSize: '12px', padding: '6px 0' }}>• <strong>{d.assistito}</strong> ({d.cf}) — {d.ambito} [{d.sede}]</div>)}
@@ -1958,8 +1954,8 @@
 
                 {activeTab === 'tariffario' && (
                   <div style={{ background: '#fff', padding: '24px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                    <h3 style={{ marginTop: 0 }}>{isBrindisi ? "Listino Brindisi" : "Tariffario Firenze"}</h3>
-                    {(isBrindisi ? tariffarioBrindisi : tariffarioFirenze).map((item, idx) => (
+                    <h3 style={{ marginTop: 0 }}>{isBrindisi ? 'Listino Brindisi' : 'Tariffario Firenze'}</h3>
+                    {(isBrindisi ? TARIFFARIO_BRINDISI : TARIFFARIO_FIRENZE).map((item, idx) => (
                       <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f1f5f9', fontSize: '13px' }}>
                         <span><strong>{item.area}:</strong> {item.servizio}</span>
                         <span><strong>{item.studio}</strong> ({item.iva})</span>
@@ -1989,7 +1985,7 @@
             )}
           </main>
 
-          {/* MODALE GESTIONE PRATICA, MODALITÀ OPERATIVA & ALLEGATI */}
+          {/* MODALE GESTIONE PRATICA */}
           {showModal && selectedPratica && (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
               <div style={{ background: '#fff', padding: '24px', borderRadius: '8px', maxWidth: '580px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -2021,12 +2017,18 @@
                   </select>
                   <input type="number" step="0.01" value={editImponibile} onChange={(e) => setEditImponibile(e.target.value)} style={{ flex: 1, padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
                 </div>
-                <div style={{ display: 'flex', gap: '16px', marginBottom: '10px', fontSize: '13px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '10px' }}>
+                  <input type="text" value={editTelefono} onChange={(e) => setEditTelefono(e.target.value)} placeholder="Telefono..." style={{ padding: '7px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px' }} />
+                  <input type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} placeholder="Email..." style={{ padding: '7px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px' }} />
+                </div>
+                <div style={{ display: 'flex', gap: '16px', marginBottom: '10px', fontSize: '13px', alignItems: 'center', flexWrap: 'wrap' }}>
                   <label><input type="checkbox" checked={editIva} onChange={(e) => setEditIva(e.target.checked)} /> IVA 22%</label>
                   <label><input type="checkbox" checked={editPagata} onChange={(e) => setEditPagata(e.target.checked)} /> Incassata</label>
+                  <label style={{ fontSize: '12px' }}>Revisione: <input type="date" value={editDataRevisione} onChange={(e) => setEditDataRevisione(e.target.value)} style={{ padding: '4px' }} /></label>
                 </div>
                 <input type="text" value={editPromemoria} onChange={(e) => setEditPromemoria(e.target.value)} placeholder="Promemoria..." style={{ width: '100%', padding: '8px', marginBottom: '10px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
                 <input type="text" value={editArchivioPratica} onChange={(e) => setEditArchivioPratica(e.target.value)} placeholder="Archivio pratica / documenti..." style={{ width: '100%', padding: '7px', marginBottom: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px', boxSizing: 'border-box' }} />
+                <input type="text" value={editArchivioRevisione} onChange={(e) => setEditArchivioRevisione(e.target.value)} placeholder="Note revisione / integrazioni..." style={{ width: '100%', padding: '7px', marginBottom: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px', boxSizing: 'border-box' }} />
                 <input type="text" value={editArchivioRicevute} onChange={(e) => setEditArchivioRicevute(e.target.value)} placeholder="Ricevute / note riscontro..." style={{ width: '100%', padding: '7px', marginBottom: '10px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px', boxSizing: 'border-box' }} />
 
                 <div style={{ marginBottom: '12px' }}>
@@ -2092,13 +2094,29 @@
                     <input type="number" value={importoServizioPersonalizzato} onChange={(e) => setImportoServizioPersonalizzato(e.target.value)} placeholder="Imponibile..." style={{ width: '100%', padding: '7px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
                   </div>
                 )}
-                <select value={nuovoCanaleIva} onChange={(e) => setNuovoCanaleIva(e.target.value)} style={{ width: '100%', padding: '8px', marginBottom: '10px', borderRadius: '4px', border: '1px solid #cbd5e1' }}>
-                  <option value="studio">Studio Commercialista (+ IVA 22%)</option>
-                  <option value="caf">Esclusivo CAF (Esente IVA)</option>
-                </select>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '10px' }}>
+                  <select value={nuovoTipoCliente} onChange={(e) => setNuovoTipoCliente(e.target.value)} style={{ padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px', background: '#fff' }}>
+                    <option value="Ordinario">Cliente Ordinario</option>
+                    <option value="Convenzionato">Cliente Convenzionato</option>
+                  </select>
+                  <select value={nuovoCanaleIva} onChange={(e) => setNuovoCanaleIva(e.target.value)} style={{ padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px', background: '#fff' }}>
+                    <option value="studio">Studio Commercialista (+ IVA 22%)</option>
+                    <option value="caf">Esclusivo CAF (Esente IVA)</option>
+                  </select>
+                </div>
+                {nuovoTipoCliente === 'Convenzionato' && (
+                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '12px' }}><input type="checkbox" checked={aggiungiQuotaAssociativa} onChange={(e) => setAggiungiQuotaAssociativa(e.target.checked)} /> Addebita quota associativa (€ 25,00)</label>
+                )}
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px' }}><input type="checkbox" checked={soloCaricamentoDocumenti} onChange={(e) => setSoloCaricamentoDocumenti(e.target.checked)} /> Solo caricamento documenti (€ 0,00)</label>
                 <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px' }}><input type="checkbox" checked={nuovaPagataSubito} onChange={(e) => setNuovaPagataSubito(e.target.checked)} /> Segna già incassata</label>
                 <label style={{ display: 'block', marginBottom: '10px', fontSize: '13px' }}><input type="checkbox" checked={nuovaInSospeso} onChange={(e) => setNuovaInSospeso(e.target.checked)} /> Lascia in sospeso</label>
-                <input type="text" value={nuovoPromemoria} onChange={(e) => setNuovoPromemoria(e.target.value)} placeholder="Promemoria..." style={{ width: '100%', padding: '8px', marginBottom: '12px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '10px' }}>
+                  <input type="date" value={nuovaDataRevisione} onChange={(e) => setNuovaDataRevisione(e.target.value)} style={{ padding: '7px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px' }} />
+                  <input type="text" value={nuovoPromemoria} onChange={(e) => setNuovoPromemoria(e.target.value)} placeholder="Promemoria..." style={{ padding: '7px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px' }} />
+                </div>
+                <input type="text" value={nuovoArchivioPratica} onChange={(e) => setNuovoArchivioPratica(e.target.value)} placeholder="Note archivio pratica..." style={{ width: '100%', padding: '7px', marginBottom: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px', boxSizing: 'border-box' }} />
+                <input type="text" value={nuovoArchivioRevisione} onChange={(e) => setNuovoArchivioRevisione(e.target.value)} placeholder="Note revisione..." style={{ width: '100%', padding: '7px', marginBottom: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px', boxSizing: 'border-box' }} />
+                <input type="text" value={nuovoArchivioRicevute} onChange={(e) => setNuovoArchivioRicevute(e.target.value)} placeholder="Note ricevute..." style={{ width: '100%', padding: '7px', marginBottom: '12px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px', boxSizing: 'border-box' }} />
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '14px', fontSize: '13px' }}>
                   <span>Imponibile: <strong>€ {calcolaImponibileNuovaPratica().toFixed(2)}</strong></span>
                   <span>Totale: <strong>€ {calcolaAnteprimaTotaleNuovaPratica()}</strong></span>
@@ -2170,8 +2188,8 @@
           {showVaultModal && (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
               <div style={{ background: '#fff', padding: '24px', borderRadius: '8px', maxWidth: '520px', width: '100%' }}>
-                <h3 style={{ marginTop: 0 }}>🔐 Cassaforte & Portali</h3>
-                {credentials.map((c) => <div key={c.id} style={{ padding: '7px 0', borderBottom: '1px solid #f1f5f9', fontSize: '12px', wordBreak: 'break-all' }}><strong>{c.sede} — {c.portale}:</strong> {c.pin}</div>)}
+                <h3 style={{ marginTop: 0 }}>🔐 Cassaforte & Portali ({chiaveSedeCorrente === 'brindisi' ? 'Brindisi' : 'Firenze'})</h3>
+                {credentials.map((c) => <div key={c.id} style={{ padding: '7px 0', borderBottom: '1px solid #f1f5f9', fontSize: '12px', wordBreak: 'break-all' }}><strong>[{c.sede}] {c.portale}:</strong> {c.pin}</div>)}
                 <div style={{ textAlign: 'right', marginTop: '14px' }}><button onClick={() => setShowVaultModal(false)} style={{ background: '#cbd5e1', border: 'none', padding: '7px 12px', borderRadius: '4px', cursor: 'pointer' }}>Chiudi</button></div>
               </div>
             </div>
@@ -2181,7 +2199,7 @@
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
               <div style={{ background: '#fff', padding: '24px', borderRadius: '8px', maxWidth: '460px', width: '100%' }}>
                 <h3 style={{ marginTop: 0 }}>⚙️ Tariffario Brindisi</h3>
-                {tariffarioBrindisi.map((t, i) => <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f1f5f9', fontSize: '13px' }}><span>{t.servizio}</span><strong>{t.studio}</strong></div>)}
+                {TARIFFARIO_BRINDISI.map((t, i) => <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f1f5f9', fontSize: '13px' }}><span>{t.servizio}</span><strong>{t.studio}</strong></div>)}
                 <div style={{ textAlign: 'right', marginTop: '14px' }}><button onClick={() => setShowBrindisiTariffModal(false)} style={{ background: '#cbd5e1', border: 'none', padding: '7px 12px', borderRadius: '4px', cursor: 'pointer' }}>Chiudi</button></div>
               </div>
             </div>
