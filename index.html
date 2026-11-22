@@ -18,7 +18,7 @@
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     const { useState, useEffect } = React;
 
-    constconst TARIFFE_SERVIZI = {
+    const TARIFFE_SERVIZI = {
       "Modello 730 Singolo": 70.00,
       "Modello Redditi PF (ex Unico / Persone Fisiche)": 150.00,
       "Modello Redditi PF Forfettario": 110.00,
@@ -34,6 +34,7 @@
       "Pratica ENEA": 70.00,
       "Rinnovo / Rilascio Permesso di Soggiorno": 250.00
     };
+
     function StudioFlowSuite() {
       const [activeTab, setActiveTab] = useState('dashboard');
       const [currentProfile, setCurrentProfile] = useState('mio_studio');
@@ -759,7 +760,7 @@
                 {!soloCaricamentoDocumenti && (
                   <>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px' }}>Tipo di Pratica / Servizio:</label>
-                   <select
+                    <select
                       value={nuovoServizio}
                       onChange={(e) => setNuovoServizio(e.target.value)}
                       style={{ width: '100%', padding: '8px', marginBottom: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
