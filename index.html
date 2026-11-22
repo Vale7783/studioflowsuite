@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>StudioFlow Suite - Firenze, Brindisi & Rete Fapi</title>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -18,7 +18,7 @@
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     const { useState, useEffect } = React;
 
-    const STORAGE_KEY = "studioflow_pratiche_v6";
+    const STORAGE_KEY = "studioflow_pratiche_v7";
     const DELEGHE_KEY = "studioflow_deleghe_fapi_v1";
     const PENSIONI_KEY = "studioflow_pensioni_v1";
     const INVALIDITA_KEY = "studioflow_invalidita_104_v1";
@@ -40,8 +40,9 @@
       "IMU / F24 / Ravvedimento / Visure": 30.00,
       "Pratica ENEA": 70.00,
       "Rinnovo / Rilascio Permesso di Soggiorno": 250.00,
-      "Invalidità Civile / Accompagnamento / L. 104": 50.00,
-      "Permessi Legge 104 / Familiari Disabili": 45.00,
+      "Legge 104 (Riconoscimento / Art. 3)": 50.00,
+      "Permessi Legge 104 (Familiare Disabile)": 45.00,
+      "Invalidità Civile / Inabilità / Accompagnamento": 50.00,
       "Pratica Personalizzata / Altra Richiesta": 0.00
     };
 
@@ -224,6 +225,31 @@
       },
       {
         id: 5,
+        clientId: "FRRLRA78M55D612Y",
+        sedeCompetenza: "Firenze",
+        cliente: "Ferraro Laura",
+        telefono: "3397766554",
+        email: "laura.ferraro@esempio.it",
+        dataRevisione: "2026-12-10",
+        tipoCliente: "Occasionale",
+        quotaAssociativaPagata: false,
+        quotaImporto: 0,
+        servizio: "Permessi Legge 104 (Familiare Disabile)",
+        modalitaLavorazione: "Ufficio / Sportello",
+        canale: "Patronato / Studio",
+        stato: "In lavorazione - Verifica documentazione familiare",
+        semaforo: "verde",
+        imponibile: 45.00,
+        iva: true,
+        soloDocumenti: false,
+        pagata: false,
+        promemoria: "Controllo giorni e frazionamento permessi L. 104",
+        archivioPratica: "Verbale L. 104 e richiesta permessi acquisiti",
+        archivioRevisione: "Verifica aggiornamento / rinnovo entro il 10/12/2026",
+        archivioRicevute: "Pratica patronato in corso"
+      },
+      {
+        id: 6,
         clientId: "BRINDISI01",
         sedeCompetenza: "Brindisi",
         cliente: "Esposito Salvatore",
@@ -307,7 +333,7 @@
       const [aggiungiQuotaAssociativa, setAggiungiQuotaAssociativa] = useState(false);
       const [soloCaricamentoDocumenti, setSoloCaricamentoDocumenti] = useState(false);
       const [nuovoCanaleIva, setNuovoCanaleIva] = useState('studio');
-      const [nuovoServizio, setNuovoServizio] = useState('Modello 730 Singolo');
+      const [nuovoServizio, setNuovoServizio] = useState('Legge 104 (Riconoscimento / Art. 3)');
       const [nomeServizioPersonalizzato, setNomeServizioPersonalizzato] = useState('');
       const [importoServizioPersonalizzato, setImportoServizioPersonalizzato] = useState('50.00');
       const [nuovoPromemoria, setNuovoPromemoria] = useState('');
@@ -393,7 +419,7 @@
         return [];
       });
 
-      // Prenotazioni & Controllo Flusso Sportello (senza sovrapposizioni)
+      // Prenotazioni & Controllo Flusso Sportello
       const [fasceOrarie, setFasceOrarie] = useState(() => {
         try {
           const saved = localStorage.getItem(CONFIG_FASCE_KEY);
@@ -410,7 +436,7 @@
       const [prenEmail, setPrenEmail] = useState('');
       const [prenData, setPrenData] = useState('2026-11-23');
       const [prenFascia, setPrenFascia] = useState('09:00-10:30');
-      const [prenServizio, setPrenServizio] = useState('Modello 730 Singolo');
+      const [prenServizio, setPrenServizio] = useState('Legge 104 (Riconoscimento / Art. 3)');
       const [prenNote, setPrenNote] = useState('');
       const [modalitaPrenCliente, setModalitaPrenCliente] = useState(false);
       const [prenotazioni, setPrenotazioni] = useState(() => {
@@ -500,8 +526,9 @@
         { area: "CED & Paghe", servizio: "Pratica Assunzione / Cessazione", base: "€ 50,00", studio: "€ 70,00", iva: "+ IVA 22%" },
         { area: "CED & Paghe", servizio: "Pacchetto Completo Colf e Badanti (12 Mesi)", base: "€ 220,00", studio: "€ 220,00", iva: "+ IVA 22%" },
         { area: "Immigrazione", servizio: "Rilascio / Rinnovo Permesso di Soggiorno", base: "—", studio: "€ 250,00 (+ costi vivi)", iva: "+ IVA 22% (sull'onorario)" },
-        { area: "Invalidità & 104", servizio: "Invalidità Civile / Inabilità / Accompagnamento / L. 104", base: "Gratuito (Istituto)", studio: "€ 45,00 - € 50,00", iva: "+ IVA 22% (in studio)" },
-        { area: "Invalidità & 104", servizio: "Permessi Legge 104 / Familiari Disabili", base: "Gratuito (Istituto)", studio: "€ 45,00", iva: "+ IVA 22% (in studio)" },
+        { area: "Legge 104 & Disabilità", servizio: "Legge 104 (Riconoscimento / Art. 3)", base: "Gratuito (Istituto)", studio: "€ 50,00", iva: "+ IVA 22% (in studio)" },
+        { area: "Legge 104 & Disabilità", servizio: "Permessi Legge 104 (Familiare Disabile)", base: "Gratuito (Istituto)", studio: "€ 45,00", iva: "+ IVA 22% (in studio)" },
+        { area: "Legge 104 & Disabilità", servizio: "Invalidità Civile / Inabilità / Accompagnamento", base: "Gratuito (Istituto)", studio: "€ 50,00", iva: "+ IVA 22% (in studio)" },
         { area: "Flessibile", servizio: "Pratica Personalizzata / Altra Richiesta", base: "A misura", studio: "Importo libero allo sportello", iva: "Secondo canale" }
       ];
 
@@ -538,7 +565,6 @@
       const isClienteIsolato = currentProfile === 'cliente_isolato';
       const isPersonalizzata = nuovoServizio === "Pratica Personalizzata / Altra Richiesta";
 
-      // Messaggi ed Email per Revisioni / Aggiornamenti
       const costruisciTestoAvviso = (p) => {
         const dataRef = p.dataRevisione || "prossimamente";
         const motivo = p.promemoria || p.archivioRevisione || "controllo / aggiornamento pratica";
@@ -590,7 +616,6 @@
         });
       };
 
-      // Calcoli Previdenza
       const calcolaEtaDettagliata = (dataNascitaStr) => {
         if (!dataNascitaStr) return { anni: 0, mesi: 0, decimale: 0 };
         const nascita = new Date(dataNascitaStr);
@@ -719,9 +744,9 @@
 
       const inviaSchedaInvaliditaInCoda = () => {
         const nome = invAssistito.trim() || "Assistito Invalidità / 104";
-        const voceServizio = invTipologia.includes("104") || invTipologia.includes("Permessi")
-          ? "Permessi Legge 104 / Familiari Disabili"
-          : "Invalidità Civile / Accompagnamento / L. 104";
+        const voceServizio = invTipologia.includes("Permessi")
+          ? "Permessi Legge 104 (Familiare Disabile)"
+          : (invTipologia.includes("104") ? "Legge 104 (Riconoscimento / Art. 3)" : "Invalidità Civile / Inabilità / Accompagnamento");
 
         const nuovaPraticaCoda = {
           id: Date.now(),
@@ -753,7 +778,6 @@
         alert('Pratica inserita in Coda Pratiche con archivio e scadenza!');
       };
 
-      // Prenotazioni & Controllo Flusso
       const occupatiInFascia = (giornoStr, fasciaId) => {
         return prenotazioni.filter(pr => pr.data === giornoStr && pr.fascia === fasciaId).length;
       };
@@ -1036,7 +1060,7 @@
         setAggiungiQuotaAssociativa(false);
         setSoloCaricamentoDocumenti(false);
         setNuovoCanaleIva('studio');
-        setNuovoServizio('Modello 730 Singolo');
+        setNuovoServizio('Legge 104 (Riconoscimento / Art. 3)');
         setNomeServizioPersonalizzato('');
         setImportoServizioPersonalizzato('50.00');
         setNuovoPromemoria('');
@@ -1310,7 +1334,6 @@
               </div>
             ) : (
               <>
-                {/* AVVISO AUTOMATICO REVISIONI / AGGIORNAMENTI IN SCADENZA O PROMEMORIA */}
                 {praticheConRevisione.length > 0 && (
                   <div style={{ background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: '8px', padding: '12px 16px', marginBottom: '18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
                     <div style={{ fontSize: '13px', color: '#92400e' }}>
@@ -1334,7 +1357,7 @@
                           {isBrindisi ? "Cruscotto Sede Brindisi (Pratiche & Listino Proprio)" : "Cruscotto Operativo Studio Firenze"}
                         </h3>
                         <p style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: '13px' }}>
-                          Contatti & avvisi revisione (Email / WhatsApp), archivio (pratica, revisione, ricevute) e ponte dati QWeb / Cesac / INPS.
+                          Contatti & avvisi revisione (Email / WhatsApp), pratiche Legge 104 / disabilità, archivio e ponte dati QWeb / Cesac / INPS.
                         </p>
                       </div>
                       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
@@ -1350,13 +1373,12 @@
                       </div>
                     </div>
 
-                    {/* BARRA RICERCA E FILTRI RAPIDI */}
                     <div style={{ background: '#fff', padding: '12px 15px', borderRadius: '8px', marginBottom: '15px', boxShadow: '0 1px 2px rgba(0,0,0,0.06)', display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
                       <input
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="🔍 Cerca cliente, CF, telefono, email, servizio o ricevuta..."
+                        placeholder="🔍 Cerca cliente, CF, telefono, email, 104, servizio o ricevuta..."
                         style={{ flex: '1 1 280px', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
                       />
                       <select
@@ -1549,7 +1571,6 @@
                         </button>
                       </div>
 
-                      {/* CONTROLLO CAPIENZA FASCE ORARIE */}
                       {!modalitaPrenCliente && (
                         <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '12px', marginBottom: '16px' }}>
                           <div style={{ fontSize: '12px', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>
@@ -1574,7 +1595,6 @@
                         </div>
                       )}
 
-                      {/* MODULO NUOVA PRENOTAZIONE */}
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '10px', marginBottom: '12px' }}>
                         <input
                           type="text"
@@ -1655,7 +1675,6 @@
                         )}
                       </div>
 
-                      {/* FLUSSO GIORNALIERO PER FASCIA */}
                       <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
                           <h4 style={{ margin: 0, fontSize: '14px' }}>Flusso Previsto del Giorno:</h4>
