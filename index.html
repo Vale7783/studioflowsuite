@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>StudioFlow Suite - Firenze & Brindisi</title>
+  <title>StudioFlow Suite - Firenze, Brindisi & Rete Fapi</title>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -17,6 +17,13 @@
     const SUPABASE_ANON_KEY = "sb_publishable_jXQVt0X8Av8E6qe_9xBxfQ_Jw1qwm1O";
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     const { useState, useEffect } = React;
+
+    const STORAGE_KEY = "studioflow_pratiche_v6";
+    const DELEGHE_KEY = "studioflow_deleghe_fapi_v1";
+    const PENSIONI_KEY = "studioflow_pensioni_v1";
+    const INVALIDITA_KEY = "studioflow_invalidita_104_v1";
+    const PRENOTAZIONI_KEY = "studioflow_prenotazioni_v1";
+    const CONFIG_FASCE_KEY = "studioflow_fasce_config_v1";
 
     const TARIFFE_SERVIZI = {
       "Modello 730 Singolo": 70.00,
@@ -32,22 +39,247 @@
       "Colf e Badanti (Assunzione / Gestione)": 220.00,
       "IMU / F24 / Ravvedimento / Visure": 30.00,
       "Pratica ENEA": 70.00,
-      "Rinnovo / Rilascio Permesso di Soggiorno": 250.00
+      "Rinnovo / Rilascio Permesso di Soggiorno": 250.00,
+      "Invalidità Civile / Accompagnamento / L. 104": 50.00,
+      "Permessi Legge 104 / Familiari Disabili": 45.00,
+      "Pratica Personalizzata / Altra Richiesta": 0.00
     };
+
+    const FASCE_ORARIE_DEFAULT = [
+      { id: "09:00-10:30", etichetta: "09:00 - 10:30", maxPosti: 2 },
+      { id: "10:30-12:00", etichetta: "10:30 - 12:00", maxPosti: 2 },
+      { id: "12:00-13:30", etichetta: "12:00 - 13:30", maxPosti: 2 },
+      { id: "15:00-16:30", etichetta: "15:00 - 16:30", maxPosti: 2 },
+      { id: "16:30-18:00", etichetta: "16:30 - 18:00", maxPosti: 2 }
+    ];
+
+    const STRUTTURA_GERARCHICA_FAPI = [
+      {
+        id: "naz-1",
+        livello: "Nazionale",
+        ente: "Direzione Nazionale Fapi (CAF / Patronato)",
+        territorio: "Italia",
+        responsabile: "Direttore Nazionale Fapi",
+        sedeRiferimento: "Coordinamento Centrale",
+        stato: "Supervisione & Indirizzo"
+      },
+      {
+        id: "reg-tos",
+        livello: "Regionale",
+        ente: "Coordinamento Regionale Toscana",
+        territorio: "Toscana",
+        responsabile: "Referente Regionale",
+        sedeRiferimento: "Firenze / Area Toscana",
+        stato: "Attivo"
+      },
+      {
+        id: "prov-fi",
+        livello: "Provinciale",
+        ente: "Coordinamento Provinciale Firenze",
+        territorio: "Provincia di Firenze",
+        responsabile: "Referente Provinciale",
+        sedeRiferimento: "Firenze",
+        stato: "Operativo"
+      },
+      {
+        id: "com-fi",
+        livello: "Comunale",
+        ente: "Presidio Comunale Firenze",
+        territorio: "Comune di Firenze",
+        responsabile: "Coordinatore Comunale",
+        sedeRiferimento: "Sportello Firenze",
+        stato: "Operativo"
+      },
+      {
+        id: "zon-fi",
+        livello: "Zonale",
+        ente: "Zona Operativa Firenze & Hinterland",
+        territorio: "Zona Firenze",
+        responsabile: "Direttore Zonale (Supervisione)",
+        sedeRiferimento: "Firenze",
+        stato: "Supervisione Attiva"
+      },
+      {
+        id: "sede-fi",
+        livello: "Sede",
+        ente: "Studio Firenze (Sede Centrale)",
+        territorio: "Firenze",
+        responsabile: "Titolare / Operatore Sportello",
+        sedeRiferimento: "Firenze",
+        stato: "Attiva da subito"
+      },
+      {
+        id: "sede-br",
+        livello: "Sede / Partner",
+        ente: "Studio Brindisi (Gestione & Listino Proprio)",
+        territorio: "Brindisi",
+        responsabile: "Responsabile Sede Brindisi",
+        sedeRiferimento: "Brindisi",
+        stato: "Collegata & Autonoma"
+      }
+    ];
+
+    const PRATICHE_INIZIALI = [
+      {
+        id: 1,
+        clientId: "RSSMRA80A01D612K",
+        sedeCompetenza: "Firenze",
+        cliente: "Rossi Mario",
+        telefono: "3331234567",
+        email: "mario.rossi@esempio.it",
+        dataRevisione: "2026-11-25",
+        tipoCliente: "Convenzionato",
+        quotaAssociativaPagata: false,
+        quotaImporto: 25.00,
+        servizio: "Modello 730 Singolo (Documenti via Link OTP)",
+        modalitaLavorazione: "Ufficio / Sportello",
+        canale: "Studio Commercialista",
+        stato: "Pronta per chiusura e incasso (Firenze)",
+        semaforo: "verde",
+        imponibile: 70.00,
+        iva: true,
+        soloDocumenti: false,
+        pagata: false,
+        promemoria: "Controllo finale ricevuta e detrazioni",
+        archivioPratica: "CU 2026 + spese sanitarie caricate",
+        archivioRevisione: "Da verificare con assistito entro il 25/11/2026",
+        archivioRicevute: "In attesa invio telematico"
+      },
+      {
+        id: 2,
+        clientId: "CNTLNE85B45F839W",
+        sedeCompetenza: "Firenze",
+        cliente: "Conti Elena",
+        telefono: "3389876543",
+        email: "elena.conti@esempio.it",
+        dataRevisione: "2026-11-24",
+        tipoCliente: "Occasionale",
+        quotaAssociativaPagata: false,
+        quotaImporto: 0,
+        servizio: "Caricamento Documenti ISEE (Accesso QR Code/PIN)",
+        modalitaLavorazione: "Solo Inserimento Documenti",
+        canale: "Upload Protetto No-SPID",
+        stato: "In sospeso - In attesa integrazione documenti",
+        semaforo: "giallo",
+        imponibile: 0.00,
+        iva: false,
+        soloDocumenti: true,
+        pagata: true,
+        promemoria: "Manca certificato saldo conto al 31/12",
+        archivioPratica: "Documento identità e stato di famiglia acquisiti",
+        archivioRevisione: "Richiesta integrazione saldo/giacenza",
+        archivioRicevute: "Gratuito - Nessuna ricevuta fiscale richiesta"
+      },
+      {
+        id: 3,
+        clientId: "BNCGLI75C50D612R",
+        sedeCompetenza: "Firenze",
+        cliente: "Bianchi Giulia",
+        telefono: "3405551122",
+        email: "giulia.bianchi@esempio.it",
+        dataRevisione: "",
+        tipoCliente: "Occasionale",
+        quotaAssociativaPagata: false,
+        quotaImporto: 0,
+        servizio: "Dichiarazione di Successione + Voltura",
+        modalitaLavorazione: "Ufficio / Sportello",
+        canale: "Studio Commercialista",
+        stato: "In Standby - Attesa accettazione preventivo",
+        semaforo: "giallo",
+        imponibile: 550.00,
+        iva: true,
+        soloDocumenti: false,
+        preventivoAccettato: false,
+        pagata: false,
+        promemoria: "Ricontattare per conferma preventivo",
+        archivioPratica: "Visure catastali preliminari in archivio",
+        archivioRevisione: "Bozza asse ereditario da verificare con eredi",
+        archivioRicevute: "Preventivo inviato, in attesa saldo"
+      },
+      {
+        id: 4,
+        clientId: "HMDKRM90D10Z330P",
+        sedeCompetenza: "Firenze",
+        cliente: "Ahmed Karim",
+        telefono: "3478899001",
+        email: "",
+        dataRevisione: "",
+        tipoCliente: "Occasionale",
+        quotaAssociativaPagata: false,
+        quotaImporto: 0,
+        servizio: "Rinnovo Permesso di Soggiorno",
+        modalitaLavorazione: "Ufficio / Sportello",
+        canale: "Studio Commercialista",
+        stato: "Documenti ricevuti - Da incassare in studio",
+        semaforo: "verde",
+        imponibile: 250.00,
+        costiVivi: 196.46,
+        iva: true,
+        soloDocumenti: false,
+        pagata: false,
+        promemoria: "",
+        archivioPratica: "Passaporto, permesso in scadenza, contratto/reddito",
+        archivioRevisione: "Controllo completezza allegati completato",
+        archivioRicevute: "Assicurata postale da completare"
+      },
+      {
+        id: 5,
+        clientId: "BRINDISI01",
+        sedeCompetenza: "Brindisi",
+        cliente: "Esposito Salvatore",
+        telefono: "3204411223",
+        email: "s.esposito@esempio.it",
+        dataRevisione: "",
+        tipoCliente: "Occasionale",
+        quotaAssociativaPagata: false,
+        quotaImporto: 0,
+        servizio: "Elaborazione Cedolino & Paghe (Brindisi)",
+        modalitaLavorazione: "Ufficio Sede Brindisi",
+        canale: "CED Brindisi",
+        stato: "In lavorazione autonoma a Brindisi",
+        semaforo: "verde",
+        imponibile: 25.00,
+        iva: true,
+        soloDocumenti: false,
+        pagata: false,
+        promemoria: "",
+        archivioPratica: "Presenze mensili acquisite",
+        archivioRevisione: "",
+        archivioRicevute: ""
+      }
+    ];
 
     function StudioFlowSuite() {
       const [activeTab, setActiveTab] = useState('dashboard');
       const [currentProfile, setCurrentProfile] = useState('mio_studio');
 
       const [selectedPratica, setSelectedPratica] = useState(null);
+      const [editImponibile, setEditImponibile] = useState(0);
+      const [editStato, setEditStato] = useState('');
+      const [editSemaforo, setEditSemaforo] = useState('verde');
+      const [editIva, setEditIva] = useState(true);
+      const [editPagata, setEditPagata] = useState(false);
+      const [editTelefono, setEditTelefono] = useState('');
+      const [editEmail, setEditEmail] = useState('');
+      const [editDataRevisione, setEditDataRevisione] = useState('');
+      const [editPromemoria, setEditPromemoria] = useState('');
+      const [editArchivioPratica, setEditArchivioPratica] = useState('');
+      const [editArchivioRevisione, setEditArchivioRevisione] = useState('');
+      const [editArchivioRicevute, setEditArchivioRicevute] = useState('');
+
+      const [searchQuery, setSearchQuery] = useState('');
+      const [filterStato, setFilterStato] = useState('tutte');
+      const [dbStatus, setDbStatus] = useState('Connessione...');
+
       const [showModal, setShowModal] = useState(false);
       const [showSportelloModal, setShowSportelloModal] = useState(false);
       const [showVaultModal, setShowVaultModal] = useState(false);
       const [showCassaModal, setShowCassaModal] = useState(false);
       const [showNoSpidModal, setShowNoSpidModal] = useState(false);
       const [showBrindisiTariffModal, setShowBrindisiTariffModal] = useState(false);
+      const [showExportModal, setShowExportModal] = useState(false);
 
-      const [tariffarioBrindisi, setTariffarioBrindisi] = useState([
+      const [tariffarioBrindisi] = useState([
         { area: "Fiscale Locale", servizio: "Modello 730 (Tariffa Brindisi)", studio: "€ 60,00", iva: "+ IVA 22%" },
         { area: "Fiscale Locale", servizio: "ISEE / DSU (Tariffa Brindisi)", studio: "€ 20,00", iva: "Esente CAF" },
         { area: "CED & Paghe", servizio: "Elaborazione Cedolino (Tariffa Brindisi)", studio: "€ 25,00", iva: "+ IVA 22%" },
@@ -68,113 +300,183 @@
 
       const [nuovoClienteNome, setNuovoClienteNome] = useState('');
       const [nuovoClienteCf, setNuovoClienteCf] = useState('');
+      const [nuovoClienteTelefono, setNuovoClienteTelefono] = useState('');
+      const [nuovoClienteEmail, setNuovoClienteEmail] = useState('');
+      const [nuovaDataRevisione, setNuovaDataRevisione] = useState('');
       const [nuovoTipoCliente, setNuovoTipoCliente] = useState('Occasionale');
       const [aggiungiQuotaAssociativa, setAggiungiQuotaAssociativa] = useState(false);
       const [soloCaricamentoDocumenti, setSoloCaricamentoDocumenti] = useState(false);
       const [nuovoCanaleIva, setNuovoCanaleIva] = useState('studio');
       const [nuovoServizio, setNuovoServizio] = useState('Modello 730 Singolo');
+      const [nomeServizioPersonalizzato, setNomeServizioPersonalizzato] = useState('');
+      const [importoServizioPersonalizzato, setImportoServizioPersonalizzato] = useState('50.00');
       const [nuovoPromemoria, setNuovoPromemoria] = useState('');
+      const [nuovaPagataSubito, setNuovaPagataSubito] = useState(false);
+      const [nuovaInSospeso, setNuovaInSospeso] = useState(false);
+      const [nuovoArchivioPratica, setNuovoArchivioPratica] = useState('');
+      const [nuovoArchivioRevisione, setNuovoArchivioRevisione] = useState('');
+      const [nuovoArchivioRicevute, setNuovoArchivioRicevute] = useState('');
 
-      const [pratiche, setPratiche] = useState([
-        {
-          id: 1,
-          clientId: "RSSMRA80A01D612K",
-          sedeCompetenza: "Firenze",
-          cliente: "Rossi Mario",
-          tipoCliente: "Convenzionato",
-          quotaAssociativaPagata: false,
-          quotaImporto: 25.00,
-          servizio: "Modello 730 Singolo (Documenti via Link OTP)",
-          modalitaLavorazione: "Ufficio / Sportello",
-          canale: "Studio Commercialista",
-          stato: "Pronta per chiusura e incasso (Firenze)",
-          semaforo: "verde",
-          imponibile: 70.00,
-          iva: true,
-          soloDocumenti: false,
-          promemoria: ""
-        },
-        {
-          id: 2,
-          clientId: "CNTLNE85B45F839W",
-          sedeCompetenza: "Firenze",
-          cliente: "Conti Elena",
-          tipoCliente: "Occasionale",
-          quotaAssociativaPagata: false,
-          quotaImporto: 0,
-          servizio: "Caricamento Documenti ISEE (Accesso QR Code/PIN)",
-          modalitaLavorazione: "Solo Inserimento Documenti",
-          canale: "Upload Protetto No-SPID",
-          stato: "Documenti acquisiti (Gratuito) - Pratica da avviare",
-          semaforo: "verde",
-          imponibile: 0.00,
-          iva: false,
-          soloDocumenti: true,
-          promemoria: ""
-        },
-        {
-          id: 3,
-          clientId: "BNCGLI75C50D612R",
-          sedeCompetenza: "Firenze",
-          cliente: "Bianchi Giulia",
-          tipoCliente: "Occasionale",
-          quotaAssociativaPagata: false,
-          quotaImporto: 0,
-          servizio: "Dichiarazione di Successione + Voltura",
-          modalitaLavorazione: "Ufficio / Sportello",
-          canale: "Studio Commercialista",
-          stato: "In Standby - Attesa accettazione preventivo",
-          semaforo: "giallo",
-          imponibile: 550.00,
-          iva: true,
-          soloDocumenti: false,
-          preventivoAccettato: false,
-          promemoria: "Ricontattare domani per conferma preventivo"
-        },
-        {
-          id: 4,
-          clientId: "HMDKRM90D10Z330P",
-          sedeCompetenza: "Firenze",
-          cliente: "Ahmed Karim",
-          tipoCliente: "Occasionale",
-          quotaAssociativaPagata: false,
-          quotaImporto: 0,
-          servizio: "Rinnovo Permesso di Soggiorno",
-          modalitaLavorazione: "Ufficio / Sportello",
-          canale: "Studio Commercialista",
-          stato: "Documenti ricevuti - Da incassare in studio",
-          semaforo: "verde",
-          imponibile: 250.00,
-          costiVivi: 196.46,
-          iva: true,
-          soloDocumenti: false,
-          promemoria: ""
-        },
-        {
-          id: 5,
-          clientId: "BRINDISI01",
-          sedeCompetenza: "Brindisi",
-          cliente: "Esposito Salvatore",
-          tipoCliente: "Occasionale",
-          quotaAssociativaPagata: false,
-          quotaImporto: 0,
-          servizio: "Elaborazione Cedolino & Paghe (Brindisi)",
-          modalitaLavorazione: "Ufficio Sede Brindisi",
-          canale: "CED Brindisi",
-          stato: "In lavorazione autonoma a Brindisi",
-          semaforo: "verde",
-          imponibile: 25.00,
-          iva: true,
-          soloDocumenti: false,
-          promemoria: ""
-        }
-      ]);
+      // Delega Unica & Gerarchia Fapi
+      const [livelloSelezionato, setLivelloSelezionato] = useState('Tutti');
+      const [delegaAssistitoNome, setDelegaAssistitoNome] = useState('');
+      const [delegaAssistitoCf, setDelegaAssistitoCf] = useState('');
+      const [delegaAmbito, setDelegaAmbito] = useState('Delega Unica (CAF / Patronato / AdE / INPS)');
+      const [delegaNote, setDelegaNote] = useState('');
+      const [delegheRegistrate, setDelegheRegistrate] = useState(() => {
+        try {
+          const saved = localStorage.getItem(DELEGHE_KEY);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed)) return parsed;
+          }
+        } catch (e) {}
+        return [
+          {
+            id: 101,
+            assistito: "Rossi Mario",
+            cf: "RSSMRA80A01D612K",
+            sede: "Firenze",
+            ambito: "Delega Unica (CAF / Patronato / AdE / INPS)",
+            note: "Bozza delega unica per pratiche fiscali e previdenziali",
+            data: "2026-11-22"
+          }
+        ];
+      });
+
+      // Previdenza, Calcolo Contributivo, Riscatti & Scadenzario 5 Anni
+      const [pensioneAssistito, setPensioneAssistito] = useState('');
+      const [pensioneCf, setPensioneCf] = useState('');
+      const [dataNascita, setDataNascita] = useState('1972-05-15');
+      const [anniMaturati, setAnniMaturati] = useState(24);
+      const [mesiMaturati, setMesiMaturati] = useState(6);
+      const [regimeContributivo, setRegimeContributivo] = useState('misto_pre_1996');
+      const [requisitoEtaVecchiaia, setRequisitoEtaVecchiaia] = useState(67);
+      const [requisitoAnniAnticipata, setRequisitoAnniAnticipata] = useState(42.83);
+      const [riscattoLaurea, setRiscattoLaurea] = useState(true);
+      const [riscattoBuchiContributivi, setRiscattoBuchiContributivi] = useState(false);
+      const [riscattoMaternitaCongedi, setRiscattoMaternitaCongedi] = useState(false);
+      const [riscattoServizioMilitare, setRiscattoServizioMilitare] = useState(false);
+      const [noteRiscatto, setNoteRiscatto] = useState('');
+      const [dataUltimoRicalcolo, setDataUltimoRicalcolo] = useState('2026-11-22');
+      const [periodicitaAnni, setPeriodicitaAnni] = useState(5);
+      const [simulazioniSalvate, setSimulazioniSalvate] = useState(() => {
+        try {
+          const saved = localStorage.getItem(PENSIONI_KEY);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed)) return parsed;
+          }
+        } catch (e) {}
+        return [];
+      });
+
+      // Invalidità, Inabilità, Legge 104 & Permessi Familiari Disabili
+      const [invAssistito, setInvAssistito] = useState('');
+      const [invCf, setInvCf] = useState('');
+      const [invTipologia, setInvTipologia] = useState('Permessi Retribuiti Legge 104 (Familiare Disabile)');
+      const [invFaseIter, setInvFaseIter] = useState('Domanda INPS Inviata / In Corso');
+      const [invFamiliare, setInvFamiliare] = useState('');
+      const [invCertificatoMedico, setInvCertificatoMedico] = useState(true);
+      const [invDocumentazioneSanitaria, setInvDocumentazioneSanitaria] = useState(true);
+      const [invDelegaAllegata, setInvDelegaAllegata] = useState(false);
+      const [invDataRevisione, setInvDataRevisione] = useState('2027-11-22');
+      const [invNote, setInvNote] = useState('');
+      const [praticheInvalidita104, setPraticheInvalidita104] = useState(() => {
+        try {
+          const saved = localStorage.getItem(INVALIDITA_KEY);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed)) return parsed;
+          }
+        } catch (e) {}
+        return [];
+      });
+
+      // Prenotazioni & Controllo Flusso Sportello (senza sovrapposizioni)
+      const [fasceOrarie, setFasceOrarie] = useState(() => {
+        try {
+          const saved = localStorage.getItem(CONFIG_FASCE_KEY);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          }
+        } catch (e) {}
+        return FASCE_ORARIE_DEFAULT;
+      });
+      const [giornoFlusso, setGiornoFlusso] = useState('2026-11-23');
+      const [prenNome, setPrenNome] = useState('');
+      const [prenTelefono, setPrenTelefono] = useState('');
+      const [prenEmail, setPrenEmail] = useState('');
+      const [prenData, setPrenData] = useState('2026-11-23');
+      const [prenFascia, setPrenFascia] = useState('09:00-10:30');
+      const [prenServizio, setPrenServizio] = useState('Modello 730 Singolo');
+      const [prenNote, setPrenNote] = useState('');
+      const [modalitaPrenCliente, setModalitaPrenCliente] = useState(false);
+      const [prenotazioni, setPrenotazioni] = useState(() => {
+        try {
+          const saved = localStorage.getItem(PRENOTAZIONI_KEY);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed)) return parsed;
+          }
+        } catch (e) {}
+        return [
+          {
+            id: 201,
+            cliente: "Rossi Mario",
+            telefono: "3331234567",
+            email: "mario.rossi@esempio.it",
+            sede: "Firenze",
+            data: "2026-11-23",
+            fascia: "09:00-10:30",
+            servizio: "Modello 730 Singolo",
+            note: "Revisione pratica e consegna ricevuta"
+          }
+        ];
+      });
+
+      const [pratiche, setPratiche] = useState(() => {
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          }
+        } catch (e) {}
+        return PRATICHE_INIZIALI;
+      });
+
+      const salvaLocale = (lista) => {
+        setPratiche(lista);
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(lista)); } catch (e) {}
+      };
+      const salvaDelegheLocale = (lista) => {
+        setDelegheRegistrate(lista);
+        try { localStorage.setItem(DELEGHE_KEY, JSON.stringify(lista)); } catch (e) {}
+      };
+      const salvaSimulazioniLocale = (lista) => {
+        setSimulazioniSalvate(lista);
+        try { localStorage.setItem(PENSIONI_KEY, JSON.stringify(lista)); } catch (e) {}
+      };
+      const salvaInvaliditaLocale = (lista) => {
+        setPraticheInvalidita104(lista);
+        try { localStorage.setItem(INVALIDITA_KEY, JSON.stringify(lista)); } catch (e) {}
+      };
+      const salvaPrenotazioniLocale = (lista) => {
+        setPrenotazioni(lista);
+        try { localStorage.setItem(PRENOTAZIONI_KEY, JSON.stringify(lista)); } catch (e) {}
+      };
+      const salvaFasceLocale = (lista) => {
+        setFasceOrarie(lista);
+        try { localStorage.setItem(CONFIG_FASCE_KEY, JSON.stringify(lista)); } catch (e) {}
+      };
 
       const [credentials] = useState([
         { id: 1, sede: "Studio Firenze (Titolare)", portale: "Zucchetti QWeb / FAPI", user: "studio.firenze@caf.it", pin: "Certificato Attivo" },
         { id: 2, sede: "Studio Brindisi (Autonomo)", portale: "Gestionale CED Brindisi", user: "ced.brindisi@partner.it", pin: "Connesso" },
-        { id: 3, sede: "Entratel / AdE", portale: "Desktop Telematico (FIACA)", user: "FI123456", pin: "CNS Locale Attiva" },
-        { id: 4, sede: "INPS / INAIL / Immigrazione", portale: "Portale Servizi Telematici", user: "SPID / CNS Locale", pin: "Attivo" }
+        { id: 3, sede: "Entratel / AdE (FIACA)", portale: "Desktop Telematico", user: "Abilitazione Intermediario", pin: "Gestita in locale/portale" },
+        { id: 4, sede: "INPS / Cesac / Immigrazione", portale: "Portale Servizi Telematici & Cesac", user: "SPID / CNS / Flusso Dati", pin: "Pronto per scambio dati" }
       ]);
 
       const tariffarioFirenze = [
@@ -198,7 +500,9 @@
         { area: "CED & Paghe", servizio: "Pratica Assunzione / Cessazione", base: "€ 50,00", studio: "€ 70,00", iva: "+ IVA 22%" },
         { area: "CED & Paghe", servizio: "Pacchetto Completo Colf e Badanti (12 Mesi)", base: "€ 220,00", studio: "€ 220,00", iva: "+ IVA 22%" },
         { area: "Immigrazione", servizio: "Rilascio / Rinnovo Permesso di Soggiorno", base: "—", studio: "€ 250,00 (+ costi vivi)", iva: "+ IVA 22% (sull'onorario)" },
-        { area: "Invalidità", servizio: "Invalidità Civile / Accompagnamento / L. 104", base: "Gratuito (Istituto)", studio: "€ 45,00 - € 50,00", iva: "+ IVA 22% (in studio)" }
+        { area: "Invalidità & 104", servizio: "Invalidità Civile / Inabilità / Accompagnamento / L. 104", base: "Gratuito (Istituto)", studio: "€ 45,00 - € 50,00", iva: "+ IVA 22% (in studio)" },
+        { area: "Invalidità & 104", servizio: "Permessi Legge 104 / Familiari Disabili", base: "Gratuito (Istituto)", studio: "€ 45,00", iva: "+ IVA 22% (in studio)" },
+        { area: "Flessibile", servizio: "Pratica Personalizzata / Altra Richiesta", base: "A misura", studio: "Importo libero allo sportello", iva: "Secondo canale" }
       ];
 
       useEffect(() => {
@@ -208,15 +512,62 @@
               .from('Pratiche')
               .select('*')
               .order('id', { ascending: false });
-            if (!error && Array.isArray(data) && data.length > 0) {
-              setPratiche((prev) => [...data, ...prev]);
+            if (error) {
+              setDbStatus('Locale (Browser)');
+              return;
+            }
+            setDbStatus('Cloud + Locale Attivo');
+            if (Array.isArray(data) && data.length > 0) {
+              setPratiche((prev) => {
+                const map = new Map();
+                [...data, ...prev].forEach((item) => map.set(item.id, { ...PRATICHE_INIZIALI[0], ...item }));
+                const merged = Array.from(map.values());
+                try { localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)); } catch (e) {}
+                return merged;
+              });
             }
           } catch (e) {
-            // Mantiene i dati locali se la tabella non è ancora popolata o ha policy RLS attive
+            setDbStatus('Locale (Browser)');
           }
         };
         caricaPraticheSupabase();
       }, []);
+
+      const isFirenze = currentProfile === 'mio_studio';
+      const isBrindisi = currentProfile === 'brindisi';
+      const isClienteIsolato = currentProfile === 'cliente_isolato';
+      const isPersonalizzata = nuovoServizio === "Pratica Personalizzata / Altra Richiesta";
+
+      // Messaggi ed Email per Revisioni / Aggiornamenti
+      const costruisciTestoAvviso = (p) => {
+        const dataRef = p.dataRevisione || "prossimamente";
+        const motivo = p.promemoria || p.archivioRevisione || "controllo / aggiornamento pratica";
+        return `Gentile ${p.cliente}, ti contattiamo dallo Studio (${p.sedeCompetenza}) in merito alla pratica "${p.servizio}". È prevista una revisione/aggiornamento (${motivo}) con data indicativa ${dataRef}. Contattaci per fissare l'orario più comodo in studio.`;
+      };
+
+      const apriEmailAvviso = (p) => {
+        if (!p.email) {
+          alert('Nessun indirizzo email salvato per questo cliente.');
+          return;
+        }
+        const subject = encodeURIComponent(`Avviso Revisione / Aggiornamento Pratica - ${p.servizio}`);
+        const body = encodeURIComponent(costruisciTestoAvviso(p));
+        window.open(`mailto:${p.email}?subject=${subject}&body=${body}`, '_blank');
+      };
+
+      const apriMessaggioAvviso = (p) => {
+        const numPulito = (p.telefono || '').replace(/[^0-9]/g, '');
+        const testo = encodeURIComponent(costruisciTestoAvviso(p));
+        if (numPulito) {
+          const waNum = numPulito.startsWith('39') ? numPulito : `39${numPulito}`;
+          window.open(`https://wa.me/${waNum}?text=${testo}`, '_blank');
+        } else {
+          window.open(`sms:?body=${testo}`, '_blank');
+        }
+      };
+
+      const oggiIso = new Date().toISOString().slice(0, 10);
+      const praticheConRevisione = pratiche.filter(p => Boolean(p.dataRevisione) || Boolean(p.promemoria));
 
       const handleCheckCF = (val) => {
         setCfInput(val.toUpperCase());
@@ -239,26 +590,369 @@
         });
       };
 
+      // Calcoli Previdenza
+      const calcolaEtaDettagliata = (dataNascitaStr) => {
+        if (!dataNascitaStr) return { anni: 0, mesi: 0, decimale: 0 };
+        const nascita = new Date(dataNascitaStr);
+        const oggi = new Date();
+        if (isNaN(nascita.getTime())) return { anni: 0, mesi: 0, decimale: 0 };
+        let anni = oggi.getFullYear() - nascita.getFullYear();
+        let mesi = oggi.getMonth() - nascita.getMonth();
+        if (oggi.getDate() < nascita.getDate()) mesi -= 1;
+        if (mesi < 0) {
+          anni -= 1;
+          mesi += 12;
+        }
+        const decimale = Math.max(0, anni + mesi / 12);
+        return { anni: Math.max(0, anni), mesi: Math.max(0, mesi), decimale };
+      };
+
+      const calcolaProssimaScadenzaRicalcolo = (dataBaseStr, anniFreq) => {
+        const base = new Date(dataBaseStr || new Date());
+        if (isNaN(base.getTime())) return "N/D";
+        const prossima = new Date(base);
+        prossima.setFullYear(prossima.getFullYear() + Number(anniFreq || 5));
+        return prossima.toISOString().slice(0, 10);
+      };
+
+      const formattaAnniMesi = (anniFloat) => {
+        const totMesi = Math.max(0, Math.round(anniFloat * 12));
+        const a = Math.floor(totMesi / 12);
+        const m = totMesi % 12;
+        return `${a} anni e ${m} mesi`;
+      };
+
+      const etaAttuale = calcolaEtaDettagliata(dataNascita);
+      const contribuzioneDecimale = Math.max(0, Number(anniMaturati || 0) + Number(mesiMaturati || 0) / 12);
+      const mancaEtaVecchiaia = Math.max(0, Number(requisitoEtaVecchiaia || 67) - etaAttuale.decimale);
+      const mancaAnniAnticipata = Math.max(0, Number(requisitoAnniAnticipata || 42.83) - contribuzioneDecimale);
+      const anniMancantiStimati = Math.min(mancaEtaVecchiaia, mancaAnniAnticipata);
+      const prossimaDataRicalcolo = calcolaProssimaScadenzaRicalcolo(dataUltimoRicalcolo, periodicitaAnni);
+
+      const vociRiscattoSelezionate = [
+        riscattoLaurea ? "Riscatto studi universitari / laurea" : null,
+        riscattoBuchiContributivi ? "Periodi scoperti / buchi contributivi" : null,
+        riscattoMaternitaCongedi ? "Maternità / congedi da verificare" : null,
+        riscattoServizioMilitare ? "Servizio militare" : null
+      ].filter(Boolean);
+
+      const salvaSimulazionePrevidenziale = () => {
+        if (!pensioneAssistito.trim()) {
+          alert('Inserisci il nome dell\'assistito per salvare la simulazione previdenziale.');
+          return;
+        }
+        const nuovaSim = {
+          id: Date.now(),
+          assistito: pensioneAssistito.trim(),
+          cf: pensioneCf.trim().toUpperCase() || "N/D",
+          regime: regimeContributivo,
+          contribuzione: formattaAnniMesi(contribuzioneDecimale),
+          mancaStima: formattaAnniMesi(anniMancantiStimati),
+          riscatti: vociRiscattoSelezionate.join(", ") || "Nessuno selezionato",
+          noteRiscatto: noteRiscatto.trim(),
+          ultimoRicalcolo: dataUltimoRicalcolo,
+          periodicita: Number(periodicitaAnni || 5),
+          prossimoRicalcolo: prossimaDataRicalcolo
+        };
+        salvaSimulazioniLocale([nuovaSim, ...simulazioniSalvate]);
+        alert('Simulazione previdenziale e scadenzario salvati!');
+      };
+
+      const inviaPromemoriaInCoda = () => {
+        const nome = pensioneAssistito.trim() || "Assistito Pensione";
+        const praticaPromemoria = {
+          id: Date.now(),
+          clientId: pensioneCf.trim().toUpperCase() || `PEN${Date.now()}`,
+          sedeCompetenza: isBrindisi ? "Brindisi" : "Firenze",
+          cliente: nome,
+          telefono: "",
+          email: "",
+          dataRevisione: prossimaDataRicalcolo,
+          tipoCliente: "Occasionale",
+          quotaAssociativaPagata: false,
+          quotaImporto: 0,
+          servizio: "Aggiornamento Contributivo & Pensione",
+          modalitaLavorazione: "Ufficio / Sportello",
+          canale: "Studio / Patronato",
+          stato: `In sospeso - Prossimo ricalcolo ${prossimaDataRicalcolo}`,
+          semaforo: "giallo",
+          imponibile: 20.00,
+          iva: true,
+          soloDocumenti: false,
+          pagata: false,
+          promemoria: `Ricalcolo contributivo ogni ${periodicitaAnni} anni -> Prossima data: ${prossimaDataRicalcolo}`,
+          archivioPratica: `Contribuzione: ${formattaAnniMesi(contribuzioneDecimale)} | Regime: ${regimeContributivo}`,
+          archivioRevisione: `Riscatti: ${vociRiscattoSelezionate.join(", ") || "Da valutare"}. ${noteRiscatto}`,
+          archivioRicevute: `Ultimo controllo: ${dataUltimoRicalcolo}`
+        };
+        salvaLocale([praticaPromemoria, ...pratiche]);
+        setActiveTab('dashboard');
+        alert(`Promemoria di ricalcolo (${prossimaDataRicalcolo}) aggiunto in Coda Pratiche!`);
+      };
+
+      const checklistDocumentiInv = [
+        invCertificatoMedico ? "Certificato medico introduttivo" : null,
+        invDocumentazioneSanitaria ? "Documentazione sanitaria / verbali" : null,
+        invDelegaAllegata ? "Delega / consenso" : null
+      ].filter(Boolean);
+
+      const salvaSchedaInvalidita104 = () => {
+        if (!invAssistito.trim()) {
+          alert('Inserisci il nome dell\'assistito per salvare la scheda Invalidità / Legge 104.');
+          return;
+        }
+        const nuovaScheda = {
+          id: Date.now(),
+          assistito: invAssistito.trim(),
+          cf: invCf.trim().toUpperCase() || "N/D",
+          sede: isBrindisi ? "Brindisi" : "Firenze",
+          tipologia: invTipologia,
+          faseIter: invFaseIter,
+          familiare: invFamiliare.trim(),
+          documenti: checklistDocumentiInv.join(", ") || "Documentazione da completare",
+          dataRevisione: invDataRevisione,
+          note: invNote.trim()
+        };
+        salvaInvaliditaLocale([nuovaScheda, ...praticheInvalidita104]);
+        alert('Scheda Invalidità / Legge 104 salvata!');
+      };
+
+      const inviaSchedaInvaliditaInCoda = () => {
+        const nome = invAssistito.trim() || "Assistito Invalidità / 104";
+        const voceServizio = invTipologia.includes("104") || invTipologia.includes("Permessi")
+          ? "Permessi Legge 104 / Familiari Disabili"
+          : "Invalidità Civile / Accompagnamento / L. 104";
+
+        const nuovaPraticaCoda = {
+          id: Date.now(),
+          clientId: invCf.trim().toUpperCase() || `INV${Date.now()}`,
+          sedeCompetenza: isBrindisi ? "Brindisi" : "Firenze",
+          cliente: nome,
+          telefono: "",
+          email: "",
+          dataRevisione: invDataRevisione,
+          tipoCliente: "Occasionale",
+          quotaAssociativaPagata: false,
+          quotaImporto: 0,
+          servizio: `${voceServizio} (${invTipologia})`,
+          modalitaLavorazione: "Ufficio / Sportello",
+          canale: "Patronato / Studio",
+          stato: `Iter: ${invFaseIter}`,
+          semaforo: invDataRevisione ? "giallo" : "verde",
+          imponibile: TARIFFE_SERVIZI[voceServizio] ?? 45.00,
+          iva: true,
+          soloDocumenti: false,
+          pagata: false,
+          promemoria: invDataRevisione ? `Scadenza / Revisione / Controllo: ${invDataRevisione}` : "",
+          archivioPratica: `Documenti: ${checklistDocumentiInv.join(", ") || "Da raccogliere"}${invFamiliare ? ` | Familiare: ${invFamiliare}` : ""}`,
+          archivioRevisione: invNote.trim(),
+          archivioRicevute: `Fase: ${invFaseIter}`
+        };
+        salvaLocale([nuovaPraticaCoda, ...pratiche]);
+        setActiveTab('dashboard');
+        alert('Pratica inserita in Coda Pratiche con archivio e scadenza!');
+      };
+
+      // Prenotazioni & Controllo Flusso
+      const occupatiInFascia = (giornoStr, fasciaId) => {
+        return prenotazioni.filter(pr => pr.data === giornoStr && pr.fascia === fasciaId).length;
+      };
+
+      const aggiornaCapienzaFascia = (fasciaId, nuovoMax) => {
+        const valore = Math.max(1, Number(nuovoMax) || 1);
+        salvaFasceLocale(fasceOrarie.map(f => f.id === fasciaId ? { ...f, maxPosti: valore } : f));
+      };
+
+      const aggiungiPrenotazione = (aggiungiAncheInCoda = false) => {
+        if (!prenNome.trim()) {
+          alert('Inserisci nome e cognome per la prenotazione.');
+          return;
+        }
+        const fasciaObj = fasceOrarie.find(f => f.id === prenFascia) || fasceOrarie[0];
+        const giaOccupati = occupatiInFascia(prenData, fasciaObj.id);
+        if (giaOccupati >= fasciaObj.maxPosti) {
+          alert(`Fascia ${fasciaObj.etichetta} già al limite (${giaOccupati}/${fasciaObj.maxPosti} posti) per il ${prenData}. Scegli un'altra fascia per evitare sovrapposizioni.`);
+          return;
+        }
+
+        const sedeScelta = isBrindisi ? "Brindisi" : "Firenze";
+        const nuovaPren = {
+          id: Date.now(),
+          cliente: prenNome.trim(),
+          telefono: prenTelefono.trim(),
+          email: prenEmail.trim(),
+          sede: sedeScelta,
+          data: prenData,
+          fascia: fasciaObj.id,
+          fasciaEtichetta: fasciaObj.etichetta,
+          servizio: prenServizio,
+          note: prenNote.trim()
+        };
+        salvaPrenotazioniLocale([nuovaPren, ...prenotazioni]);
+        setGiornoFlusso(prenData);
+
+        if (aggiungiAncheInCoda) {
+          const imponibileStimato = TARIFFE_SERVIZI[prenServizio] ?? 30.00;
+          const praticaDaPren = {
+            id: Date.now() + 1,
+            clientId: `PRN${Date.now().toString().slice(-6)}`,
+            sedeCompetenza: sedeScelta,
+            cliente: prenNome.trim(),
+            telefono: prenTelefono.trim(),
+            email: prenEmail.trim(),
+            dataRevisione: prenData,
+            tipoCliente: "Occasionale",
+            quotaAssociativaPagata: false,
+            quotaImporto: 0,
+            servizio: `${prenServizio} (Appuntamento ${prenData} ${fasciaObj.etichetta})`,
+            modalitaLavorazione: "Appuntamento Sportello",
+            canale: "Prenotazione",
+            stato: `Prenotato ${prenData} (${fasciaObj.etichetta})`,
+            semaforo: "verde",
+            imponibile: imponibileStimato,
+            iva: true,
+            soloDocumenti: false,
+            pagata: false,
+            promemoria: prenNote.trim() || `Appuntamento ${prenData} ore ${fasciaObj.etichetta}`,
+            archivioPratica: `Appuntamento fissato per ${prenData} fascia ${fasciaObj.etichetta}`,
+            archivioRevisione: prenNote.trim(),
+            archivioRicevute: ""
+          };
+          salvaLocale([praticaDaPren, ...pratiche]);
+        }
+
+        setPrenNome('');
+        setPrenTelefono('');
+        setPrenEmail('');
+        setPrenNote('');
+        alert(aggiungiAncheInCoda ? 'Prenotazione salvata e aggiunta anche in Coda Pratiche!' : 'Prenotazione registrata nella fascia oraria!');
+      };
+
+      const eliminaPrenotazione = (id) => {
+        salvaPrenotazioniLocale(prenotazioni.filter(pr => pr.id !== id));
+      };
+
+      const apriModaleGestione = (p) => {
+        setSelectedPratica(p);
+        setEditImponibile(Number(p.imponibile || 0));
+        setEditStato(p.stato || '');
+        setEditSemaforo(p.semaforo || 'verde');
+        setEditIva(Boolean(p.iva));
+        setEditPagata(Boolean(p.pagata));
+        setEditTelefono(p.telefono || '');
+        setEditEmail(p.email || '');
+        setEditDataRevisione(p.dataRevisione || '');
+        setEditPromemoria(p.promemoria || '');
+        setEditArchivioPratica(p.archivioPratica || '');
+        setEditArchivioRevisione(p.archivioRevisione || '');
+        setEditArchivioRicevute(p.archivioRicevute || '');
+        setShowModal(true);
+      };
+
+      const impostaInSospesoNelModale = () => {
+        setEditStato("In sospeso - In attesa integrazione o conferma");
+        setEditSemaforo("giallo");
+        if (!editPromemoria.trim()) {
+          setEditPromemoria("Pratica lasciata in sospeso per integrazione / verifica");
+        }
+      };
+
+      const salvaModifichePratica = async () => {
+        if (!selectedPratica) return;
+        const aggiornata = {
+          ...selectedPratica,
+          imponibile: Number(editImponibile) || 0,
+          stato: editStato.trim() || selectedPratica.stato,
+          semaforo: editSemaforo,
+          iva: editIva,
+          pagata: editPagata,
+          telefono: editTelefono.trim(),
+          email: editEmail.trim(),
+          dataRevisione: editDataRevisione,
+          promemoria: editPromemoria.trim(),
+          archivioPratica: editArchivioPratica,
+          archivioRevisione: editArchivioRevisione,
+          archivioRicevute: editArchivioRicevute
+        };
+
+        try {
+          await supabaseClient
+            .from('Pratiche')
+            .update({
+              imponibile: aggiornata.imponibile,
+              stato: aggiornata.stato,
+              semaforo: aggiornata.semaforo,
+              iva: aggiornata.iva,
+              pagata: aggiornata.pagata,
+              promemoria: aggiornata.promemoria
+            })
+            .eq('id', aggiornata.id);
+        } catch (e) {}
+
+        const nuovaLista = pratiche.map(p => p.id === aggiornata.id ? aggiornata : p);
+        salvaLocale(nuovaLista);
+        setShowModal(false);
+      };
+
+      const toggleIncassoRapido = async (p) => {
+        const nuovoStatoPagata = !p.pagata;
+        const nuovoTestoStato = nuovoStatoPagata
+          ? `Chiusa e Incassata (${p.sedeCompetenza})`
+          : `Pronta per chiusura e incasso (${p.sedeCompetenza})`;
+
+        try {
+          await supabaseClient
+            .from('Pratiche')
+            .update({ pagata: nuovoStatoPagata, stato: nuovoTestoStato })
+            .eq('id', p.id);
+        } catch (e) {}
+
+        const nuovaLista = pratiche.map(item =>
+          item.id === p.id
+            ? { ...item, pagata: nuovoStatoPagata, stato: nuovoTestoStato, semaforo: 'verde' }
+            : item
+        );
+        salvaLocale(nuovaLista);
+      };
+
+      const eliminaPratica = async (id) => {
+        if (!window.confirm('Sei sicura di voler eliminare definitivamente questa pratica?')) return;
+        try {
+          await supabaseClient.from('Pratiche').delete().eq('id', id);
+        } catch (e) {}
+        const nuovaLista = pratiche.filter(p => p.id !== id);
+        salvaLocale(nuovaLista);
+        setShowModal(false);
+      };
+
       const interrompiPromemoria = (id) => {
-        setPratiche(pratiche.map(p => p.id === id ? { ...p, promemoria: "", stato: "Pronta per Operatore", semaforo: "verde" } : p));
+        const nuovaLista = pratiche.map(p =>
+          p.id === id
+            ? { ...p, promemoria: "", stato: "Pronta per lavorazione / Ripresa", semaforo: "verde" }
+            : p
+        );
+        salvaLocale(nuovaLista);
       };
 
       const approvaPreventivoSuccessione = (id) => {
-        setPratiche(pratiche.map(p => p.id === id ? { ...p, preventivoAccettato: true, stato: "Preventivo Accettato - Pronto per incasso", semaforo: "verde" } : p));
+        const nuovaLista = pratiche.map(p =>
+          p.id === id ? { ...p, preventivoAccettato: true, stato: "Preventivo Accettato - Pronto per incasso", semaforo: "verde" } : p
+        );
+        salvaLocale(nuovaLista);
       };
 
       const spostaSedePratica = (id, nuovaSede) => {
-        setPratiche(pratiche.map(p => p.id === id ? { ...p, sedeCompetenza: nuovaSede, stato: `Inoltrata a Sede ${nuovaSede}` } : p));
+        const nuovaLista = pratiche.map(p =>
+          p.id === id ? { ...p, sedeCompetenza: nuovaSede, stato: `Inoltrata a Sede ${nuovaSede}` } : p
+        );
+        salvaLocale(nuovaLista);
         setShowModal(false);
         alert(`Pratica inoltrata con successo alla sede di ${nuovaSede}!`);
       };
 
-      const isFirenze = currentProfile === 'mio_studio';
-      const isBrindisi = currentProfile === 'brindisi';
-      const isClienteIsolato = currentProfile === 'cliente_isolato';
-
       const calcolaImponibileNuovaPratica = () => {
         if (soloCaricamentoDocumenti) return 0.00;
+        if (isPersonalizzata) return Number(importoServizioPersonalizzato) || 0.00;
         return TARIFFE_SERVIZI[nuovoServizio] ?? 70.00;
       };
 
@@ -276,27 +970,42 @@
           alert('Inserisci il nome e cognome del cliente.');
           return;
         }
+        const servizioFinale = soloCaricamentoDocumenti
+          ? "Solo Inserimento Documenti"
+          : (isPersonalizzata ? (nomeServizioPersonalizzato.trim() || "Pratica Personalizzata") : nuovoServizio);
+
         const hasIva = !soloCaricamentoDocumenti && nuovoCanaleIva === 'studio';
         const imponibileCalcolato = calcolaImponibileNuovaPratica();
         const quotaImportoCalcolato = (nuovoTipoCliente === 'Convenzionato' && aggiungiQuotaAssociativa) ? 25.00 : 0;
+        const incassataSubito = soloCaricamentoDocumenti || nuovaPagataSubito;
+        const statoIniziale = soloCaricamentoDocumenti
+          ? (nuovaInSospeso ? "In sospeso - Documenti parziali" : "Documenti acquisiti (Gratuito)")
+          : (nuovaInSospeso ? "In sospeso - Da riprendere" : (incassataSubito ? "Chiusa e Incassata" : (nuovoPromemoria ? "In Standby" : "Pronta per lavorazione")));
 
         const nuova = {
           id: Date.now(),
           clientId: nuovoClienteCf.trim().toUpperCase() || `CLI${Date.now()}`,
           sedeCompetenza: isBrindisi ? "Brindisi" : "Firenze",
           cliente: nuovoClienteNome.trim(),
+          telefono: nuovoClienteTelefono.trim(),
+          email: nuovoClienteEmail.trim(),
+          dataRevisione: nuovaDataRevisione,
           tipoCliente: nuovoTipoCliente,
           quotaAssociativaPagata: nuovoTipoCliente === 'Convenzionato' ? !aggiungiQuotaAssociativa : false,
           quotaImporto: quotaImportoCalcolato,
-          servizio: soloCaricamentoDocumenti ? "Solo Inserimento Documenti" : nuovoServizio,
+          servizio: servizioFinale,
           modalitaLavorazione: "Ufficio / Sportello",
           canale: soloCaricamentoDocumenti ? "App / Link No-SPID" : (hasIva ? "Studio Commercialista" : "Esclusivo CAF"),
-          stato: soloCaricamentoDocumenti ? "Documenti acquisiti (Gratuito)" : (nuovoPromemoria ? "In Standby" : "Pronta per lavorazione"),
-          semaforo: nuovoPromemoria ? "giallo" : "verde",
+          stato: statoIniziale,
+          semaforo: (nuovaInSospeso || nuovoPromemoria || nuovaDataRevisione) ? "giallo" : "verde",
           imponibile: imponibileCalcolato,
           iva: hasIva,
           soloDocumenti: soloCaricamentoDocumenti,
-          promemoria: nuovoPromemoria
+          pagata: incassataSubito,
+          promemoria: nuovoPromemoria || (nuovaInSospeso ? "Pratica lasciata in sospeso allo sportello" : ""),
+          archivioPratica: nuovoArchivioPratica,
+          archivioRevisione: nuovoArchivioRevisione,
+          archivioRicevute: nuovoArchivioRicevute
         };
 
         try {
@@ -311,23 +1020,51 @@
             imponibile: nuova.imponibile,
             iva: nuova.iva,
             soloDocumenti: nuova.soloDocumenti,
+            pagata: nuova.pagata,
             promemoria: nuova.promemoria
           }]);
-        } catch (e) {
-          // Continua comunque con l'aggiornamento locale
-        }
+        } catch (e) {}
 
-        setPratiche([nuova, ...pratiche]);
+        salvaLocale([nuova, ...pratiche]);
         setShowSportelloModal(false);
         setNuovoClienteNome('');
         setNuovoClienteCf('');
+        setNuovoClienteTelefono('');
+        setNuovoClienteEmail('');
+        setNuovaDataRevisione('');
         setNuovoTipoCliente('Occasionale');
         setAggiungiQuotaAssociativa(false);
         setSoloCaricamentoDocumenti(false);
         setNuovoCanaleIva('studio');
         setNuovoServizio('Modello 730 Singolo');
+        setNomeServizioPersonalizzato('');
+        setImportoServizioPersonalizzato('50.00');
         setNuovoPromemoria('');
-        alert('Nuova pratica registrata correttamente con isolamento GDPR!');
+        setNuovaPagataSubito(false);
+        setNuovaInSospeso(false);
+        setNuovoArchivioPratica('');
+        setNuovoArchivioRevisione('');
+        setNuovoArchivioRicevute('');
+      };
+
+      const registraDelegaFapi = () => {
+        if (!delegaAssistitoNome.trim()) {
+          alert('Inserisci il nome dell\'assistito per la bozza di delega.');
+          return;
+        }
+        const nuovaDelega = {
+          id: Date.now(),
+          assistito: delegaAssistitoNome.trim(),
+          cf: delegaAssistitoCf.trim().toUpperCase() || "N/D",
+          sede: isBrindisi ? "Brindisi" : "Firenze",
+          ambito: delegaAmbito,
+          note: delegaNote.trim(),
+          data: new Date().toISOString().slice(0, 10)
+        };
+        salvaDelegheLocale([nuovaDelega, ...delegheRegistrate]);
+        setDelegaAssistitoNome('');
+        setDelegaAssistitoCf('');
+        setDelegaNote('');
       };
 
       const calcolaTotale = (p) => {
@@ -338,9 +1075,66 @@
         return (imponibile + ivaAmount + Number(p.costiVivi || 0) + quotaDaPagare).toFixed(2);
       };
 
-      const praticheVisibili = isClienteIsolato
+      const praticheFiltrate = (isClienteIsolato
         ? pratiche.filter(p => p.clientId === "RSSMRA80A01D612K")
-        : pratiche;
+        : pratiche
+      ).filter((p) => {
+        if (isClienteIsolato) return true;
+        const q = searchQuery.trim().toLowerCase();
+        const matchTesto = !q ||
+          (p.cliente || '').toLowerCase().includes(q) ||
+          (p.clientId || '').toLowerCase().includes(q) ||
+          (p.telefono || '').toLowerCase().includes(q) ||
+          (p.email || '').toLowerCase().includes(q) ||
+          (p.servizio || '').toLowerCase().includes(q) ||
+          (p.archivioPratica || '').toLowerCase().includes(q) ||
+          (p.archivioRicevute || '').toLowerCase().includes(q);
+
+        if (!matchTesto) return false;
+        if (filterStato === 'da_incassare') return !p.pagata && !p.soloDocumenti;
+        if (filterStato === 'incassate') return Boolean(p.pagata);
+        if (filterStato === 'sospese') {
+          const st = (p.stato || '').toLowerCase();
+          return p.semaforo === 'giallo' || Boolean(p.promemoria) || Boolean(p.dataRevisione) || st.includes('sospeso') || st.includes('standby');
+        }
+        return true;
+      });
+
+      const praticheFirenze = pratiche.filter(p => p.sedeCompetenza === 'Firenze');
+      const totaleIncassatoFirenze = praticheFirenze
+        .filter(p => p.pagata)
+        .reduce((acc, p) => acc + Number(calcolaTotale(p)), 0);
+      const totaleDaIncassareFirenze = praticheFirenze
+        .filter(p => !p.pagata && !p.soloDocumenti)
+        .reduce((acc, p) => acc + Number(calcolaTotale(p)), 0);
+
+      const generaCsvFlusso = () => {
+        const righe = [
+          "ID;Sede;Cliente;CF;Telefono;Email;DataRevisione;Servizio;Stato;Imponibile;Totale;Pagata;ArchivioPratica;ArchivioRevisione;ArchivioRicevute",
+          ...pratiche.map(p => [
+            p.id,
+            p.sedeCompetenza,
+            `"${(p.cliente || '').replace(/"/g, '""')}"`,
+            p.clientId || "",
+            `"${(p.telefono || '').replace(/"/g, '""')}"`,
+            `"${(p.email || '').replace(/"/g, '""')}"`,
+            p.dataRevisione || "",
+            `"${(p.servizio || '').replace(/"/g, '""')}"`,
+            `"${(p.stato || '').replace(/"/g, '""')}"`,
+            Number(p.imponibile || 0).toFixed(2),
+            calcolaTotale(p),
+            p.pagata ? "SI" : "NO",
+            `"${(p.archivioPratica || '').replace(/"/g, '""')}"`,
+            `"${(p.archivioRevisione || '').replace(/"/g, '""')}"`,
+            `"${(p.archivioRicevute || '').replace(/"/g, '""')}"`
+          ].join(";"))
+        ];
+        return righe.join("\n");
+      };
+
+      const gerarchiaFiltrata = livelloSelezionato === 'Tutti'
+        ? STRUTTURA_GERARCHICA_FAPI
+        : STRUTTURA_GERARCHICA_FAPI.filter(g => g.livello.includes(livelloSelezionato));
 
       return (
         <div style={{ fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif', backgroundColor: '#f4f6f9', minHeight: '100vh', color: '#333' }}>
@@ -351,8 +1145,13 @@
               <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '750' }}>
                 {isBrindisi ? '🏛️ Studio Brindisi (Autonomo)' : isClienteIsolato ? '🛡️ Area Caricamento Protetto No-SPID' : '🏢 Studio Firenze (Sede Centrale)'}
                 <span style={{ fontSize: '11px', background: isFirenze ? '#3b82f6' : isBrindisi ? '#ea580c' : '#14b8a6', padding: '3px 8px', borderRadius: '4px', marginLeft: '10px' }}>
-                  {isFirenze ? 'TITOLARE FIRENZE' : isBrindisi ? 'SEDE BRINDISI (COLLEGATA & AUTONOMA)' : 'AREA ASSISTITO ISOLATA'}
+                  {isFirenze ? 'TITOLARE FIRENZE' : isBrindisi ? 'SEDE BRINDISI' : 'AREA ASSISTITO ISOLATA'}
                 </span>
+                {!isClienteIsolato && (
+                  <span style={{ fontSize: '11px', background: 'rgba(255,255,255,0.15)', padding: '3px 8px', borderRadius: '4px', marginLeft: '8px', fontWeight: 'normal' }}>
+                    💾 {dbStatus}
+                  </span>
+                )}
               </h2>
             </div>
 
@@ -380,7 +1179,7 @@
                   onClick={() => setShowBrindisiTariffModal(true)}
                   style={{ background: '#ea580c', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
                 >
-                  ⚙️ Personalizza Tariffario Brindisi
+                  ⚙️ Tariffario Brindisi
                 </button>
               )}
 
@@ -389,7 +1188,7 @@
                   onClick={() => setShowCassaModal(true)}
                   style={{ background: '#d97706', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
                 >
-                  💶 Cassa Firenze
+                  💶 Cassa Firenze (€ {totaleIncassatoFirenze.toFixed(2)})
                 </button>
               )}
 
@@ -398,7 +1197,7 @@
                   onClick={() => setShowVaultModal(true)}
                   style={{ background: '#059669', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
                 >
-                  🔐 Cassaforte & Flussi QWeb/AdE
+                  🔐 Cassaforte & Portali
                 </button>
               )}
             </div>
@@ -408,11 +1207,27 @@
           {!isClienteIsolato && (
             <nav style={{ background: '#fff', padding: '0 30px', borderBottom: '1px solid #e2e8f0', display: 'flex', gap: '20px', overflowX: 'auto' }}>
               <button onClick={() => setActiveTab('dashboard')} style={{ padding: '15px 10px', background: 'none', border: 'none', borderBottom: activeTab === 'dashboard' ? '3px solid #2563eb' : '3px solid transparent', fontWeight: activeTab === 'dashboard' ? 'bold' : 'normal', color: activeTab === 'dashboard' ? '#2563eb' : '#64748b', cursor: 'pointer' }}>
-                📥 Coda Pratiche & Scambio Inter-Sede
+                📥 Coda Pratiche & Archivio
+              </button>
+
+              <button onClick={() => setActiveTab('prenotazioni')} style={{ padding: '15px 10px', background: 'none', border: 'none', borderBottom: activeTab === 'prenotazioni' ? '3px solid #2563eb' : '3px solid transparent', fontWeight: activeTab === 'prenotazioni' ? 'bold' : 'normal', color: activeTab === 'prenotazioni' ? '#2563eb' : '#64748b', cursor: 'pointer' }}>
+                📅 Prenotazioni & Flusso Sportello
+              </button>
+
+              <button onClick={() => setActiveTab('pensioni')} style={{ padding: '15px 10px', background: 'none', border: 'none', borderBottom: activeTab === 'pensioni' ? '3px solid #2563eb' : '3px solid transparent', fontWeight: activeTab === 'pensioni' ? 'bold' : 'normal', color: activeTab === 'pensioni' ? '#2563eb' : '#64748b', cursor: 'pointer' }}>
+                📊 Previdenza & Pensioni
+              </button>
+
+              <button onClick={() => setActiveTab('invalidita104')} style={{ padding: '15px 10px', background: 'none', border: 'none', borderBottom: activeTab === 'invalidita104' ? '3px solid #2563eb' : '3px solid transparent', fontWeight: activeTab === 'invalidita104' ? 'bold' : 'normal', color: activeTab === 'invalidita104' ? '#2563eb' : '#64748b', cursor: 'pointer' }}>
+                ♿ Invalidità, Inabilità & L. 104
+              </button>
+
+              <button onClick={() => setActiveTab('fapi_rete')} style={{ padding: '15px 10px', background: 'none', border: 'none', borderBottom: activeTab === 'fapi_rete' ? '3px solid #2563eb' : '3px solid transparent', fontWeight: activeTab === 'fapi_rete' ? 'bold' : 'normal', color: activeTab === 'fapi_rete' ? '#2563eb' : '#64748b', cursor: 'pointer' }}>
+                🏛️ Rete Fapi & Delega Unica
               </button>
 
               <button onClick={() => setActiveTab('tariffario')} style={{ padding: '15px 10px', background: 'none', border: 'none', borderBottom: activeTab === 'tariffario' ? '3px solid #2563eb' : '3px solid transparent', fontWeight: activeTab === 'tariffario' ? 'bold' : 'normal', color: activeTab === 'tariffario' ? '#2563eb' : '#64748b', cursor: 'pointer' }}>
-                📋 Listini Prezzi ({isBrindisi ? 'Tariffario Autonomo Brindisi' : 'Tariffario Firenze'})
+                📋 Listini Prezzi ({isBrindisi ? 'Tariffario Brindisi' : 'Tariffario Firenze'})
               </button>
 
               <button onClick={() => setActiveTab('isee_check')} style={{ padding: '15px 10px', background: 'none', border: 'none', borderBottom: activeTab === 'isee_check' ? '3px solid #2563eb' : '3px solid transparent', fontWeight: activeTab === 'isee_check' ? 'bold' : 'normal', color: activeTab === 'isee_check' ? '#2563eb' : '#64748b', cursor: 'pointer' }}>
@@ -436,7 +1251,7 @@
                     <h3 style={{ margin: '0 0 10px 0', color: '#0f766e' }}>Accesso Protetto Senza SPID / CIE</h3>
                     <p style={{ fontSize: '14px', color: '#475569', marginBottom: '20px' }}>
                       Hai aperto il link personale inviato dallo Studio per <strong>Mario Rossi</strong>.<br/>
-                      Inserisci il <strong>Codice PIN a 6 cifre</strong> ricevuto via SMS/WhatsApp o stampato sul foglio dello studio (per provare scrivi <code>123456</code>):
+                      Inserisci il <strong>Codice PIN a 6 cifre</strong> ricevuto via SMS/WhatsApp (per provare scrivi <code>123456</code>):
                     </p>
                     <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '15px' }}>
                       <input
@@ -457,9 +1272,6 @@
                         Sblocca la tua Cartella
                       </button>
                     </div>
-                    <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>
-                      🛡️ Il collegamento è cifrato e valido solo per la tua pratica. Nessun altro utente può accedere a questa schermata.
-                    </p>
                   </div>
                 ) : (
                   <div>
@@ -483,7 +1295,7 @@
                           </tr>
                         </thead>
                         <tbody>
-                          {praticheVisibili.map((p) => (
+                          {praticheFiltrate.map((p) => (
                             <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                               <td style={{ padding: '12px 15px', fontWeight: '600' }}>{p.servizio}</td>
                               <td style={{ padding: '12px 15px', color: '#059669' }}>{p.stato}</td>
@@ -498,20 +1310,36 @@
               </div>
             ) : (
               <>
+                {/* AVVISO AUTOMATICO REVISIONI / AGGIORNAMENTI IN SCADENZA O PROMEMORIA */}
+                {praticheConRevisione.length > 0 && (
+                  <div style={{ background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: '8px', padding: '12px 16px', marginBottom: '18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                    <div style={{ fontSize: '13px', color: '#92400e' }}>
+                      🔔 <strong>Promemoria Revisioni / Aggiornamenti:</strong> hai <strong>{praticheConRevisione.length}</strong> pratiche con revisione/aggiornamento o promemoria attivo.
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      {praticheConRevisione.slice(0, 3).map((item) => (
+                        <span key={item.id} style={{ background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '6px', padding: '4px 8px', fontSize: '11px', color: '#78350f' }}>
+                          <strong>{item.cliente}</strong> {item.dataRevisione ? `(${item.dataRevisione}${item.dataRevisione <= oggiIso ? ' • Scad/Oggi' : ''})` : ''}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {activeTab === 'dashboard' && (
                   <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
                       <div>
                         <h3 style={{ margin: 0, color: '#1e293b' }}>
-                          {isBrindisi ? "Cruscotto Sede Brindisi (Pratiche & Listino Proprio)" : "Cruscotto Studio Centrale Firenze & Scambio Reciproco"}
+                          {isBrindisi ? "Cruscotto Sede Brindisi (Pratiche & Listino Proprio)" : "Cruscotto Operativo Studio Firenze"}
                         </h3>
-                        <p style={{ margin: '5px 0 0 0', color: '#64748b', fontSize: '14px' }}>
-                          Gestisci le pratiche, genera link No-SPID, esporta flussi massivi per QWeb/AdE o inoltra pratiche tra Firenze e Brindisi.
+                        <p style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: '13px' }}>
+                          Contatti & avvisi revisione (Email / WhatsApp), archivio (pratica, revisione, ricevute) e ponte dati QWeb / Cesac / INPS.
                         </p>
                       </div>
                       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                        <button onClick={() => alert('Esportazione tracciato massivo per Zucchetti QWeb / Desktop Telematico avviata!')} style={{ background: '#475569', color: '#fff', border: 'none', padding: '10px 14px', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '13px' }}>
-                          📤 Export Massivo QWeb / AdE
+                        <button onClick={() => setShowExportModal(true)} style={{ background: '#475569', color: '#fff', border: 'none', padding: '10px 14px', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '13px' }}>
+                          📤 Ponte Dati QWeb / Cesac / INPS
                         </button>
                         <button onClick={() => { setGeneratedToken(null); setShowNoSpidModal(true); }} style={{ background: '#0d9488', color: '#fff', border: 'none', padding: '10px 16px', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '13px' }}>
                           📲 Link / QR No-SPID
@@ -522,21 +1350,47 @@
                       </div>
                     </div>
 
+                    {/* BARRA RICERCA E FILTRI RAPIDI */}
+                    <div style={{ background: '#fff', padding: '12px 15px', borderRadius: '8px', marginBottom: '15px', boxShadow: '0 1px 2px rgba(0,0,0,0.06)', display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="🔍 Cerca cliente, CF, telefono, email, servizio o ricevuta..."
+                        style={{ flex: '1 1 280px', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                      />
+                      <select
+                        value={filterStato}
+                        onChange={(e) => setFilterStato(e.target.value)}
+                        style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', background: '#fff' }}
+                      >
+                        <option value="tutte">Tutte le pratiche ({pratiche.length})</option>
+                        <option value="sospese">In sospeso / Revisione / Standby</option>
+                        <option value="da_incassare">Da incassare</option>
+                        <option value="incassate">Incassate / Chiuse</option>
+                      </select>
+                      {searchQuery && (
+                        <button onClick={() => setSearchQuery('')} style={{ background: '#e2e8f0', border: 'none', padding: '7px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
+                          Pulisci
+                        </button>
+                      )}
+                    </div>
+
                     <div style={{ background: '#fff', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflowX: 'auto' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
                         <thead>
                           <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', color: '#475569' }}>
                             <th style={{ padding: '12px 15px' }}>Stato</th>
                             <th style={{ padding: '12px 15px' }}>Sede</th>
-                            <th style={{ padding: '12px 15px' }}>Cliente & Profilo</th>
-                            <th style={{ padding: '12px 15px' }}>Servizio & Avanzamento</th>
-                            {isFirenze && <th style={{ padding: '12px 15px' }}>Importo / Quota</th>}
-                            <th style={{ padding: '12px 15px', textAlign: 'center' }}>Azioni & Scambio</th>
+                            <th style={{ padding: '12px 15px' }}>Cliente, Contatti & CF</th>
+                            <th style={{ padding: '12px 15px' }}>Servizio, Revisione & Archivio</th>
+                            {isFirenze && <th style={{ padding: '12px 15px' }}>Importo & Cassa</th>}
+                            <th style={{ padding: '12px 15px', textAlign: 'center' }}>Azioni & Avvisi</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {praticheVisibili.map((p) => (
-                            <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                          {praticheFiltrate.map((p) => (
+                            <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9', backgroundColor: p.pagata ? '#f8fafc' : '#fff' }}>
                               <td style={{ padding: '12px 15px' }}>
                                 <span style={{ height: '14px', width: '14px', display: 'inline-block', borderRadius: '50%', background: p.semaforo === 'verde' ? '#22c55e' : p.semaforo === 'giallo' ? '#eab308' : '#ef4444' }} />
                               </td>
@@ -547,7 +1401,16 @@
                               </td>
                               <td style={{ padding: '12px 15px' }}>
                                 <div style={{ fontWeight: '600' }}>{p.cliente}</div>
+                                <div style={{ fontSize: '11px', color: '#64748b', fontFamily: 'monospace' }}>{p.clientId}</div>
+                                {(p.telefono || p.email) && (
+                                  <div style={{ fontSize: '11px', color: '#334155', marginTop: '2px' }}>
+                                    {p.telefono && <div>📞 {p.telefono}</div>}
+                                    {p.email && <div>✉️ {p.email}</div>}
+                                  </div>
+                                )}
                                 <span style={{
+                                  display: 'inline-block',
+                                  marginTop: '3px',
                                   fontSize: '11px',
                                   padding: '2px 6px',
                                   borderRadius: '4px',
@@ -560,29 +1423,88 @@
                               </td>
                               <td style={{ padding: '12px 15px' }}>
                                 <div style={{ fontWeight: '600', color: '#1e293b' }}>{p.servizio}</div>
-                                <div style={{ fontSize: '12px', color: '#64748b' }}>{p.stato}</div>
+                                <div style={{ fontSize: '12px', color: '#475569', marginTop: '2px' }}>{p.stato}</div>
+                                {p.dataRevisione && (
+                                  <div style={{ marginTop: '4px', fontSize: '11px', fontWeight: '700', color: p.dataRevisione <= oggiIso ? '#b91c1c' : '#1d4ed8' }}>
+                                    🗓️ Revisione / Controllo: {p.dataRevisione} {p.dataRevisione <= oggiIso ? '(Da contattare)' : ''}
+                                  </div>
+                                )}
+
+                                {(p.archivioPratica || p.archivioRevisione || p.archivioRicevute) && (
+                                  <div style={{ marginTop: '6px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '6px 9px', fontSize: '11px', color: '#334155', lineHeight: '1.45' }}>
+                                    {p.archivioPratica && <div>📁 <strong>Pratica/Doc:</strong> {p.archivioPratica}</div>}
+                                    {p.archivioRevisione && <div>🔄 <strong>Revisione:</strong> {p.archivioRevisione}</div>}
+                                    {p.archivioRicevute && <div>🧾 <strong>Ricevute:</strong> {p.archivioRicevute}</div>}
+                                  </div>
+                                )}
+
                                 {p.promemoria && (
                                   <div style={{ marginTop: '6px', background: '#fef9c3', border: '1px solid #fde047', padding: '6px 10px', borderRadius: '6px', fontSize: '12px', color: '#854d0e', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-                                    <span>⏰ {p.promemoria}</span>
+                                    <span>⏸️ {p.promemoria}</span>
                                     <button onClick={() => interrompiPromemoria(p.id)} style={{ background: '#ca8a04', color: '#fff', border: 'none', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}>
-                                      Sblocca
+                                      Riprendi
                                     </button>
                                   </div>
                                 )}
                               </td>
                               {isFirenze && (
-                                <td style={{ padding: '12px 15px', fontWeight: '700', color: '#0f172a' }}>
-                                  € {calcolaTotale(p)}
+                                <td style={{ padding: '12px 15px' }}>
+                                  <div style={{ fontWeight: '700', color: '#0f172a' }}>€ {calcolaTotale(p)}</div>
+                                  <span style={{
+                                    display: 'inline-block',
+                                    marginTop: '3px',
+                                    fontSize: '10px',
+                                    padding: '2px 6px',
+                                    borderRadius: '4px',
+                                    fontWeight: 'bold',
+                                    background: p.pagata ? '#dcfce7' : '#fef3c7',
+                                    color: p.pagata ? '#166534' : '#92400e'
+                                  }}>
+                                    {p.soloDocumenti ? 'GRATUITO' : (p.pagata ? '✓ INCASSATA' : '⏳ DA INCASSARE')}
+                                  </span>
                                 </td>
                               )}
                               <td style={{ padding: '12px 15px', textAlign: 'center' }}>
                                 <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', flexWrap: 'wrap' }}>
                                   <button
-                                    onClick={() => { setSelectedPratica(p); setShowModal(true); }}
-                                    style={{ background: '#e2e8f0', color: '#1e293b', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}
+                                    onClick={() => apriModaleGestione(p)}
+                                    style={{ background: '#1e293b', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}
                                   >
-                                    Dettagli / Inoltra
+                                    ✏️ Gestisci
                                   </button>
+                                  {p.email && (
+                                    <button
+                                      onClick={() => apriEmailAvviso(p)}
+                                      style={{ background: '#4f46e5', color: '#fff', border: 'none', padding: '6px 9px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}
+                                    >
+                                      📧 Email
+                                    </button>
+                                  )}
+                                  {(p.telefono || p.email) && (
+                                    <button
+                                      onClick={() => apriMessaggioAvviso(p)}
+                                      style={{ background: '#16a34a', color: '#fff', border: 'none', padding: '6px 9px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}
+                                    >
+                                      💬 Msg
+                                    </button>
+                                  )}
+                                  {isFirenze && !p.soloDocumenti && (
+                                    <button
+                                      onClick={() => toggleIncassoRapido(p)}
+                                      style={{
+                                        background: p.pagata ? '#e2e8f0' : '#059669',
+                                        color: p.pagata ? '#334155' : '#fff',
+                                        border: 'none',
+                                        padding: '6px 10px',
+                                        borderRadius: '4px',
+                                        cursor: 'pointer',
+                                        fontSize: '12px',
+                                        fontWeight: '600'
+                                      }}
+                                    >
+                                      {p.pagata ? 'Annulla Incasso' : '💶 Incassa'}
+                                    </button>
+                                  )}
                                   {p.servizio.includes('Successione') && !p.preventivoAccettato && (
                                     <button
                                       onClick={() => approvaPreventivoSuccessione(p.id)}
@@ -595,8 +1517,656 @@
                               </td>
                             </tr>
                           ))}
+                          {praticheFiltrate.length === 0 && (
+                            <tr>
+                              <td colSpan={6} style={{ padding: '25px', textAlign: 'center', color: '#64748b' }}>
+                                Nessuna pratica trovata con i filtri attuali.
+                              </td>
+                            </tr>
+                          )}
                         </tbody>
                       </table>
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === 'prenotazioni' && (
+                  <div style={{ display: 'grid', gap: '20px' }}>
+                    <div style={{ background: '#fff', padding: '24px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
+                        <div>
+                          <h3 style={{ margin: 0 }}>📅 Prenotazioni & Controllo Flusso Sportello</h3>
+                          <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#64748b' }}>
+                            Imposta il numero massimo di appuntamenti per fascia oraria così eviti sovrapposizioni e gestisci il flusso in studio con ordine.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setModalitaPrenCliente(!modalitaPrenCliente)}
+                          style={{ background: modalitaPrenCliente ? '#0f766e' : '#334155', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}
+                        >
+                          {modalitaPrenCliente ? '👀 Vista Sportello Operatore' : '📱 Simula Modulo Prenotazione Assistito'}
+                        </button>
+                      </div>
+
+                      {/* CONTROLLO CAPIENZA FASCE ORARIE */}
+                      {!modalitaPrenCliente && (
+                        <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '12px', marginBottom: '16px' }}>
+                          <div style={{ fontSize: '12px', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>
+                            ⚙️ Limite Persone per Fascia Oraria (per non andare in tilt allo sportello)
+                          </div>
+                          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                            {fasceOrarie.map((f) => (
+                              <div key={f.id} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '8px 10px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <strong>{f.etichetta}:</strong>
+                                <span>max</span>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max="15"
+                                  value={f.maxPosti}
+                                  onChange={(e) => aggiornaCapienzaFascia(f.id, e.target.value)}
+                                  style={{ width: '46px', padding: '4px', borderRadius: '4px', border: '1px solid #cbd5e1', textAlign: 'center' }}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* MODULO NUOVA PRENOTAZIONE */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '10px', marginBottom: '12px' }}>
+                        <input
+                          type="text"
+                          value={prenNome}
+                          onChange={(e) => setPrenNome(e.target.value)}
+                          placeholder="Nome e Cognome..."
+                          style={{ padding: '8px 10px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                        />
+                        <input
+                          type="text"
+                          value={prenTelefono}
+                          onChange={(e) => setPrenTelefono(e.target.value)}
+                          placeholder="Telefono / WhatsApp..."
+                          style={{ padding: '8px 10px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                        />
+                        <input
+                          type="email"
+                          value={prenEmail}
+                          onChange={(e) => setPrenEmail(e.target.value)}
+                          placeholder="Email (opzionale)..."
+                          style={{ padding: '8px 10px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                        />
+                        <input
+                          type="date"
+                          value={prenData}
+                          onChange={(e) => setPrenData(e.target.value)}
+                          style={{ padding: '8px 10px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                        />
+                        <select
+                          value={prenFascia}
+                          onChange={(e) => setPrenFascia(e.target.value)}
+                          style={{ padding: '8px 10px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '13px', background: '#fff' }}
+                        >
+                          {fasceOrarie.map((f) => {
+                            const occ = occupatiInFascia(prenData, f.id);
+                            const piena = occ >= f.maxPosti;
+                            return (
+                              <option key={f.id} value={f.id} disabled={piena}>
+                                {f.etichetta} ({occ}/{f.maxPosti} {piena ? 'COMPLETA' : 'liberi'})
+                              </option>
+                            );
+                          })}
+                        </select>
+                        <select
+                          value={prenServizio}
+                          onChange={(e) => setPrenServizio(e.target.value)}
+                          style={{ padding: '8px 10px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '13px', background: '#fff' }}
+                        >
+                          {Object.keys(TARIFFE_SERVIZI).map((k) => (
+                            <option key={k} value={k}>{k}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '18px' }}>
+                        <input
+                          type="text"
+                          value={prenNote}
+                          onChange={(e) => setPrenNote(e.target.value)}
+                          placeholder="Motivo appuntamento / documenti da portare..."
+                          style={{ flex: '1 1 260px', padding: '8px 10px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => aggiungiPrenotazione(false)}
+                          style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}
+                        >
+                          + Conferma Appuntamento
+                        </button>
+                        {!modalitaPrenCliente && (
+                          <button
+                            type="button"
+                            onClick={() => aggiungiPrenotazione(true)}
+                            style={{ background: '#059669', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}
+                          >
+                            + Prenota e Invia in Coda
+                          </button>
+                        )}
+                      </div>
+
+                      {/* FLUSSO GIORNALIERO PER FASCIA */}
+                      <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
+                          <h4 style={{ margin: 0, fontSize: '14px' }}>Flusso Previsto del Giorno:</h4>
+                          <input
+                            type="date"
+                            value={giornoFlusso}
+                            onChange={(e) => setGiornoFlusso(e.target.value)}
+                            style={{ padding: '6px 10px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                          />
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '12px' }}>
+                          {fasceOrarie.map((f) => {
+                            const listaFascia = prenotazioni.filter(pr => pr.data === giornoFlusso && pr.fascia === f.id);
+                            const piena = listaFascia.length >= f.maxPosti;
+                            return (
+                              <div key={f.id} style={{ border: `1px solid ${piena ? '#fca5a5' : '#cbd5e1'}`, background: piena ? '#fef2f2' : '#f8fafc', borderRadius: '8px', padding: '12px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                  <strong style={{ fontSize: '13px' }}>{f.etichetta}</strong>
+                                  <span style={{ fontSize: '11px', fontWeight: '700', padding: '2px 7px', borderRadius: '4px', background: piena ? '#fee2e2' : '#dcfce7', color: piena ? '#b91c1c' : '#166534' }}>
+                                    {listaFascia.length}/{f.maxPosti} {piena ? 'Piena' : 'OK'}
+                                  </span>
+                                </div>
+                                {listaFascia.length === 0 ? (
+                                  <div style={{ fontSize: '12px', color: '#94a3b8' }}>Nessun appuntamento</div>
+                                ) : (
+                                  listaFascia.map((pr) => (
+                                    <div key={pr.id} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '7px 9px', marginBottom: '6px', fontSize: '12px' }}>
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <strong>{pr.cliente}</strong>
+                                        {!modalitaPrenCliente && (
+                                          <button onClick={() => eliminaPrenotazione(pr.id)} style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: '11px' }}>
+                                            ✕
+                                          </button>
+                                        )}
+                                      </div>
+                                      <div style={{ color: '#475569' }}>{pr.servizio}</div>
+                                      {pr.telefono && <div style={{ fontSize: '11px', color: '#64748b' }}>📞 {pr.telefono}</div>}
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === 'pensioni' && (
+                  <div style={{ display: 'grid', gap: '20px' }}>
+                    <div style={{ background: '#fff', padding: '24px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                      <h3 style={{ marginTop: 0, marginBottom: '6px' }}>📊 Calcolo Contributivo, Quanto Manca, Riscatti & Scadenzario 5 Anni</h3>
+                      <p style={{ margin: '0 0 18px 0', fontSize: '12px', color: '#64748b' }}>
+                        Simulazione orientativa di supporto allo sportello (da verificare sempre con l'estratto conto aggiornato e i requisiti/adeguamenti normativi vigenti al momento della domanda).
+                      </p>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px' }}>Assistito:</label>
+                          <input
+                            type="text"
+                            value={pensioneAssistito}
+                            onChange={(e) => setPensioneAssistito(e.target.value)}
+                            placeholder="Nome e Cognome..."
+                            style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px' }}>Codice Fiscale:</label>
+                          <input
+                            type="text"
+                            value={pensioneCf}
+                            onChange={(e) => setPensioneCf(e.target.value.toUpperCase())}
+                            placeholder="CF Assistito..."
+                            style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px' }}>Data di Nascita:</label>
+                          <input
+                            type="date"
+                            value={dataNascita}
+                            onChange={(e) => setDataNascita(e.target.value)}
+                            style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px' }}>Regime / Anzianità:</label>
+                          <select
+                            value={regimeContributivo}
+                            onChange={(e) => setRegimeContributivo(e.target.value)}
+                            style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', background: '#fff' }}
+                          >
+                            <option value="misto_pre_1996">Misto (contributi prima e dopo 1996)</option>
+                            <option value="contributivo_puro">Contributivo puro (dal 1996)</option>
+                            <option value="retributivo_misto_lungo">Anzianità contributiva elevata da verificare</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '16px', background: '#f8fafc', padding: '14px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px' }}>Anni maturati (da estratto):</label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="60"
+                            value={anniMaturati}
+                            onChange={(e) => setAnniMaturati(Number(e.target.value) || 0)}
+                            style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px' }}>Mesi maturati (da estratto):</label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="11"
+                            value={mesiMaturati}
+                            onChange={(e) => setMesiMaturati(Number(e.target.value) || 0)}
+                            style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px' }}>Requisito età vecchiaia (anni):</label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={requisitoEtaVecchiaia}
+                            onChange={(e) => setRequisitoEtaVecchiaia(Number(e.target.value) || 67)}
+                            style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px' }}>Requisito anticipata (anni):</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={requisitoAnniAnticipata}
+                            onChange={(e) => setRequisitoAnniAnticipata(Number(e.target.value) || 42.83)}
+                            style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                          />
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '12px', marginBottom: '18px' }}>
+                        <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', padding: '12px', borderRadius: '8px' }}>
+                          <div style={{ fontSize: '11px', color: '#1e40af', fontWeight: '700' }}>ETÀ & CONTRIBUZIONE ATTUALE</div>
+                          <div style={{ fontSize: '14px', fontWeight: '700', marginTop: '4px', color: '#0f172a' }}>
+                            {etaAttuale.anni}a {etaAttuale.mesi}m • {anniMaturati}a {mesiMaturati}m versati
+                          </div>
+                        </div>
+                        <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '12px', borderRadius: '8px' }}>
+                          <div style={{ fontSize: '11px', color: '#166534', fontWeight: '700' }}>STIMA TEMPO MANCANTE</div>
+                          <div style={{ fontSize: '15px', fontWeight: '800', marginTop: '4px', color: '#14532d' }}>
+                            {anniMancantiStimati <= 0 ? 'Requisito raggiunto (verificare)' : formattaAnniMesi(anniMancantiStimati)}
+                          </div>
+                          <div style={{ fontSize: '11px', color: '#166534', marginTop: '2px' }}>
+                            Vecchiaia: {formattaAnniMesi(mancaEtaVecchiaia)} • Anticipata: {formattaAnniMesi(mancaAnniAnticipata)}
+                          </div>
+                        </div>
+                        <div style={{ background: '#fefce8', border: '1px solid #fde047', padding: '12px', borderRadius: '8px' }}>
+                          <div style={{ fontSize: '11px', color: '#854d0e', fontWeight: '700' }}>PROSSIMO RICALCOLO PERIODICO</div>
+                          <div style={{ fontSize: '15px', fontWeight: '800', marginTop: '4px', color: '#713f12' }}>
+                            📅 {prossimaDataRicalcolo}
+                          </div>
+                          <div style={{ fontSize: '11px', color: '#854d0e', marginTop: '2px' }}>
+                            Cadenza impostata: ogni {periodicitaAnni} anni
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '14px', marginBottom: '16px' }}>
+                        <div style={{ fontSize: '13px', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>
+                          🎓 Cosa è possibile riscattare / integrare (da verificare con normativa ed estratto)
+                        </div>
+                        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '10px', fontSize: '13px' }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                            <input type="checkbox" checked={riscattoLaurea} onChange={(e) => setRiscattoLaurea(e.target.checked)} />
+                            Laurea / Studi universitari
+                          </label>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                            <input type="checkbox" checked={riscattoBuchiContributivi} onChange={(e) => setRiscattoBuchiContributivi(e.target.checked)} />
+                            Periodi scoperti / buchi contributivi
+                          </label>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                            <input type="checkbox" checked={riscattoMaternitaCongedi} onChange={(e) => setRiscattoMaternitaCongedi(e.target.checked)} />
+                            Maternità / congedi
+                          </label>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                            <input type="checkbox" checked={riscattoServizioMilitare} onChange={(e) => setRiscattoServizioMilitare(e.target.checked)} />
+                            Servizio militare
+                          </label>
+                        </div>
+                        <input
+                          type="text"
+                          value={noteRiscatto}
+                          onChange={(e) => setNoteRiscatto(e.target.value)}
+                          placeholder="Dettagli periodi riscattabili, anni di laurea, montante o note per il cliente..."
+                          style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px', boxSizing: 'border-box' }}
+                        />
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '18px', alignItems: 'end' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px' }}>Data ultimo controllo / ricalcolo:</label>
+                          <input
+                            type="date"
+                            value={dataUltimoRicalcolo}
+                            onChange={(e) => setDataUltimoRicalcolo(e.target.value)}
+                            style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px' }}>Periodicità ricalcolo:</label>
+                          <select
+                            value={periodicitaAnni}
+                            onChange={(e) => setPeriodicitaAnni(Number(e.target.value))}
+                            style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', background: '#fff' }}
+                          >
+                            <option value={5}>Ogni 5 anni (standard)</option>
+                            <option value={3}>Ogni 3 anni</option>
+                            <option value={1}>Ogni 1 anno</option>
+                            <option value={10}>Ogni 10 anni</option>
+                          </select>
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          <button
+                            type="button"
+                            onClick={salvaSimulazionePrevidenziale}
+                            style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '9px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}
+                          >
+                            💾 Salva Simulazione
+                          </button>
+                          <button
+                            type="button"
+                            onClick={inviaPromemoriaInCoda}
+                            style={{ background: '#d97706', color: '#fff', border: 'none', padding: '9px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}
+                          >
+                            ⏰ Invia in Coda
+                          </button>
+                        </div>
+                      </div>
+
+                      {simulazioniSalvate.length > 0 && (
+                        <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '14px' }}>
+                          <h4 style={{ margin: '0 0 10px 0', fontSize: '14px' }}>Simulazioni & Scadenze Salvate</h4>
+                          {simulazioniSalvate.map((s) => (
+                            <div key={s.id} style={{ padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: '6px', marginBottom: '8px', background: '#f8fafc', fontSize: '12px' }}>
+                              <div><strong>{s.assistito}</strong> (<code>{s.cf}</code>) — Versati: <strong>{s.contribuzione}</strong> — Mancano (stima): <strong>{s.mancaStima}</strong></div>
+                              <div style={{ marginTop: '3px', color: '#475569' }}>
+                                Riscatti: <strong>{s.riscatti}</strong> • Prossimo ricalcolo (ogni {s.periodicita}a): <strong>{s.prossimoRicalcolo}</strong>
+                              </div>
+                              {s.noteRiscatto && <div style={{ marginTop: '3px', color: '#334155' }}>Note: {s.noteRiscatto}</div>}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === 'invalidita104' && (
+                  <div style={{ display: 'grid', gap: '20px' }}>
+                    <div style={{ background: '#fff', padding: '24px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                      <h3 style={{ marginTop: 0, marginBottom: '6px' }}>♿ Invalidità, Inabilità, Legge 104 & Permessi Familiari Disabili</h3>
+                      <p style={{ margin: '0 0 18px 0', fontSize: '12px', color: '#64748b' }}>
+                        Gestione operativa dello sportello per accertamenti, domande, Legge 104, permessi per familiari disabili, controlli/revisioni e passaggio diretto in Coda Pratiche.
+                      </p>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '12px', marginBottom: '14px' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px' }}>Richiedente / Assistito:</label>
+                          <input
+                            type="text"
+                            value={invAssistito}
+                            onChange={(e) => setInvAssistito(e.target.value)}
+                            placeholder="Nome e Cognome..."
+                            style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px' }}>Codice Fiscale:</label>
+                          <input
+                            type="text"
+                            value={invCf}
+                            onChange={(e) => setInvCf(e.target.value.toUpperCase())}
+                            placeholder="CF Richiedente..."
+                            style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px' }}>Tipologia Pratica del Ramo:</label>
+                          <select
+                            value={invTipologia}
+                            onChange={(e) => setInvTipologia(e.target.value)}
+                            style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', background: '#fff' }}
+                          >
+                            <option value="Permessi Retribuiti Legge 104 (Familiare Disabile)">Permessi Retribuiti Legge 104 (Familiare Disabile)</option>
+                            <option value="Riconoscimento Legge 104 / Art. 3 Comma 3">Riconoscimento Legge 104 / Art. 3 Comma 3</option>
+                            <option value="Invalidità Civile / Indennità di Accompagnamento">Invalidità Civile / Indennità di Accompagnamento</option>
+                            <option value="Inabilità / Assegno Ordinario di Invalidità (AOI)">Inabilità / Assegno Ordinario di Invalidità (AOI)</option>
+                            <option value="Congedo Straordinario / Tutele Familiari Disabili">Congedo Straordinario / Tutele Familiari Disabili</option>
+                            <option value="Revisione Sanitaria / Aggravamento / Ricorso">Revisione Sanitaria / Aggravamento / Ricorso</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px' }}>Stato Iter:</label>
+                          <select
+                            value={invFaseIter}
+                            onChange={(e) => setInvFaseIter(e.target.value)}
+                            style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', background: '#fff' }}
+                          >
+                            <option value="Raccolta Documenti / Certificato Medico">Raccolta Documenti / Certificato Medico</option>
+                            <option value="Domanda INPS Inviata / In Corso">Domanda INPS Inviata / In Corso</option>
+                            <option value="In Attesa Visita / Commissione">In Attesa Visita / Commissione</option>
+                            <option value="Verbale / Riconoscimento o Permessi Attivi">Verbale / Riconoscimento o Permessi Attivi</option>
+                            <option value="In Revisione / Controllo Periodico">In Revisione / Controllo Periodico</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px', marginBottom: '14px' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px' }}>Familiare disabile assistito (se 104 / permessi):</label>
+                          <input
+                            type="text"
+                            value={invFamiliare}
+                            onChange={(e) => setInvFamiliare(e.target.value)}
+                            placeholder="Nome, grado di parentela o CF familiare..."
+                            style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px' }}>Data revisione / verifica / rinnovo:</label>
+                          <input
+                            type="date"
+                            value={invDataRevisione}
+                            onChange={(e) => setInvDataRevisione(e.target.value)}
+                            style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                          />
+                        </div>
+                      </div>
+
+                      <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '12px', marginBottom: '14px' }}>
+                        <div style={{ fontSize: '12px', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>
+                          📋 Checklist Documentale & Note Operative
+                        </div>
+                        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '10px', fontSize: '13px' }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                            <input type="checkbox" checked={invCertificatoMedico} onChange={(e) => setInvCertificatoMedico(e.target.checked)} />
+                            Certificato medico introduttivo
+                          </label>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                            <input type="checkbox" checked={invDocumentazioneSanitaria} onChange={(e) => setInvDocumentazioneSanitaria(e.target.checked)} />
+                            Documentazione sanitaria / verbali
+                          </label>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                            <input type="checkbox" checked={invDelegaAllegata} onChange={(e) => setInvDelegaAllegata(e.target.checked)} />
+                            Delega / consenso
+                          </label>
+                        </div>
+                        <input
+                          type="text"
+                          value={invNote}
+                          onChange={(e) => setInvNote(e.target.value)}
+                          placeholder="Note su giorni/frazionamento permessi, protocolli, visite o integrazioni..."
+                          style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px', boxSizing: 'border-box' }}
+                        />
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '16px' }}>
+                        <button
+                          type="button"
+                          onClick={salvaSchedaInvalidita104}
+                          style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '9px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}
+                        >
+                          💾 Salva Scheda Ramo
+                        </button>
+                        <button
+                          type="button"
+                          onClick={inviaSchedaInvaliditaInCoda}
+                          style={{ background: '#059669', color: '#fff', border: 'none', padding: '9px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}
+                        >
+                          📥 Invia in Coda Pratiche
+                        </button>
+                      </div>
+
+                      {praticheInvalidita104.length > 0 && (
+                        <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '14px' }}>
+                          <h4 style={{ margin: '0 0 10px 0', fontSize: '14px' }}>Schede Invalidità / Legge 104 Salvate</h4>
+                          {praticheInvalidita104.map((item) => (
+                            <div key={item.id} style={{ padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: '6px', marginBottom: '8px', background: '#f8fafc', fontSize: '12px' }}>
+                              <div><strong>{item.assistito}</strong> (<code>{item.cf}</code>) — <strong>{item.tipologia}</strong> • Iter: <em>{item.faseIter}</em></div>
+                              <div style={{ marginTop: '3px', color: '#475569' }}>
+                                Documenti: {item.documenti} {item.familiare ? `• Familiare: ${item.familiare}` : ''} • Revisione/Controllo: <strong>{item.dataRevisione || 'N/D'}</strong>
+                              </div>
+                              {item.note && <div style={{ marginTop: '3px', color: '#334155' }}>Note: {item.note}</div>}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === 'fapi_rete' && (
+                  <div style={{ display: 'grid', gap: '20px' }}>
+                    <div style={{ background: '#fff', padding: '24px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
+                        <div>
+                          <h3 style={{ margin: 0 }}>🏛️ Struttura Gerarchica Fapi (Nazionale → Sede & Direttore Zonale)</h3>
+                          <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#64748b' }}>
+                            Architettura pensata per supervisione Nazionale, Regionale, Provinciale, Comunale, Zonale (con Direttore Zonale) e singole Sedi.
+                          </p>
+                        </div>
+                        <select
+                          value={livelloSelezionato}
+                          onChange={(e) => setLivelloSelezionato(e.target.value)}
+                          style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                        >
+                          <option value="Tutti">Tutti i livelli</option>
+                          <option value="Nazionale">Nazionale</option>
+                          <option value="Regionale">Regionale</option>
+                          <option value="Provinciale">Provinciale</option>
+                          <option value="Comunale">Comunale</option>
+                          <option value="Zonale">Zonale (Direttore Zonale)</option>
+                          <option value="Sede">Sede / Sportello</option>
+                        </select>
+                      </div>
+
+                      <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+                          <thead>
+                            <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', color: '#475569' }}>
+                              <th style={{ padding: '10px 12px' }}>Livello</th>
+                              <th style={{ padding: '10px 12px' }}>Articolazione / Ente</th>
+                              <th style={{ padding: '10px 12px' }}>Territorio</th>
+                              <th style={{ padding: '10px 12px' }}>Supervisione / Ruolo</th>
+                              <th style={{ padding: '10px 12px' }}>Stato</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {gerarchiaFiltrata.map((g) => (
+                              <tr key={g.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                <td style={{ padding: '10px 12px', fontWeight: '700', color: '#1e293b' }}>{g.livello}</td>
+                                <td style={{ padding: '10px 12px', fontWeight: '600' }}>{g.ente}</td>
+                                <td style={{ padding: '10px 12px' }}>{g.territorio}</td>
+                                <td style={{ padding: '10px 12px' }}>{g.responsabile}</td>
+                                <td style={{ padding: '10px 12px', color: '#059669', fontWeight: '600' }}>{g.stato}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <div style={{ background: '#fff', padding: '24px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                      <h3 style={{ marginTop: 0 }}>📄 Bozza / Registro Delega Unica (CAF, Patronato, AdE & INPS)</h3>
+                      <p style={{ fontSize: '13px', color: '#64748b', marginTop: 0 }}>
+                        Registra qui le deleghe uniche dell'assistito (senza inserire password o credenziali riservate nel codice sorgente).
+                      </p>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px', marginBottom: '12px' }}>
+                        <input
+                          type="text"
+                          value={delegaAssistitoNome}
+                          onChange={(e) => setDelegaAssistitoNome(e.target.value)}
+                          placeholder="Nome e Cognome Assistito..."
+                          style={{ padding: '8px 10px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                        />
+                        <input
+                          type="text"
+                          value={delegaAssistitoCf}
+                          onChange={(e) => setDelegaAssistitoCf(e.target.value.toUpperCase())}
+                          placeholder="Codice Fiscale Assistito..."
+                          style={{ padding: '8px 10px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                        />
+                        <select
+                          value={delegaAmbito}
+                          onChange={(e) => setDelegaAmbito(e.target.value)}
+                          style={{ padding: '8px 10px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                        >
+                          <option value="Delega Unica (CAF / Patronato / AdE / INPS)">Delega Unica (CAF / Patronato / AdE / INPS)</option>
+                          <option value="Delega Fiscale & Dichiarativi">Delega Fiscale & Dichiarativi</option>
+                          <option value="Delega Previdenziale INPS">Delega Previdenziale INPS</option>
+                          <option value="Delega CED / Lavoro (Cesac)">Delega CED / Lavoro (Cesac)</option>
+                        </select>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '16px' }}>
+                        <input
+                          type="text"
+                          value={delegaNote}
+                          onChange={(e) => setDelegaNote(e.target.value)}
+                          placeholder="Note delega, data firma, riferimenti pratica..."
+                          style={{ flex: '1 1 280px', padding: '8px 10px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                        />
+                        <button onClick={registraDelegaFapi} style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>
+                          + Registra Delega Unica
+                        </button>
+                      </div>
+
+                      {delegheRegistrate.map((d) => (
+                        <div key={d.id} style={{ padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: '6px', marginBottom: '8px', background: '#f8fafc', fontSize: '13px' }}>
+                          <strong>{d.assistito}</strong> (<code>{d.cf}</code>) — <em>{d.ambito}</em> — Sede: <strong>{d.sede}</strong> ({d.data})
+                          {d.note && <div style={{ fontSize: '12px', color: '#475569', marginTop: '3px' }}>{d.note}</div>}
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -679,28 +2249,167 @@
             )}
           </main>
 
-          {/* MODALE DETTAGLI / INOLTRA PRATICA */}
+          {/* MODALE GESTIONE COMPLETA, CONTATTI & ARCHIVIO PRATICA */}
           {showModal && selectedPratica && (
-            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
-              <div style={{ background: '#fff', padding: '25px', borderRadius: '8px', maxWidth: '480px', width: '100%' }}>
-                <h3 style={{ marginTop: 0 }}>Pratica: {selectedPratica.cliente}</h3>
-                <p style={{ fontSize: '14px', margin: '6px 0' }}><strong>Servizio:</strong> {selectedPratica.servizio}</p>
-                <p style={{ fontSize: '14px', margin: '6px 0' }}><strong>Sede attuale:</strong> {selectedPratica.sedeCompetenza}</p>
-                <p style={{ fontSize: '14px', margin: '6px 0' }}><strong>Stato:</strong> {selectedPratica.stato}</p>
-                <p style={{ fontSize: '14px', margin: '6px 0 18px 0' }}><strong>Importo totale:</strong> € {calcolaTotale(selectedPratica)}</p>
-
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '15px' }}>
-                  <button onClick={() => spostaSedePratica(selectedPratica.id, 'Firenze')} style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
-                    Inoltra a Firenze
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px', overflowY: 'auto' }}>
+              <div style={{ background: '#fff', padding: '24px', borderRadius: '8px', maxWidth: '580px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                  <h3 style={{ margin: 0 }}>✏️ Gestione & Archivio: {selectedPratica.cliente}</h3>
+                  <button
+                    type="button"
+                    onClick={impostaInSospesoNelModale}
+                    style={{ background: '#fef08a', color: '#854d0e', border: '1px solid #eab308', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', fontWeight: '700' }}
+                  >
+                    ⏸️ Lascia in Sospeso
                   </button>
-                  <button onClick={() => spostaSedePratica(selectedPratica.id, 'Brindisi')} style={{ background: '#ea580c', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
-                    Inoltra a Brindisi
+                </div>
+                <p style={{ fontSize: '13px', color: '#64748b', marginTop: 0, marginBottom: '14px' }}>
+                  {selectedPratica.servizio} — CF: <code>{selectedPratica.clientId}</code>
+                </p>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '8px', marginBottom: '10px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', marginBottom: '3px' }}>Telefono / WhatsApp:</label>
+                    <input
+                      type="text"
+                      value={editTelefono}
+                      onChange={(e) => setEditTelefono(e.target.value)}
+                      placeholder="Es. 3331234567"
+                      style={{ width: '100%', padding: '7px 8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', marginBottom: '3px' }}>Email Cliente:</label>
+                    <input
+                      type="email"
+                      value={editEmail}
+                      onChange={(e) => setEditEmail(e.target.value)}
+                      placeholder="cliente@email.it"
+                      style={{ width: '100%', padding: '7px 8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', marginBottom: '3px' }}>Data Revisione / Agg.:</label>
+                    <input
+                      type="date"
+                      value={editDataRevisione}
+                      onChange={(e) => setEditDataRevisione(e.target.value)}
+                      style={{ width: '100%', padding: '7px 8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px' }}>Stato Pratica:</label>
+                <input
+                  type="text"
+                  value={editStato}
+                  onChange={(e) => setEditStato(e.target.value)}
+                  style={{ width: '100%', padding: '8px', marginBottom: '10px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                />
+
+                <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px' }}>Semaforo:</label>
+                    <select
+                      value={editSemaforo}
+                      onChange={(e) => setEditSemaforo(e.target.value)}
+                      style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                    >
+                      <option value="verde">🟢 Verde (Regolare)</option>
+                      <option value="giallo">🟡 Giallo (In Sospeso / Standby)</option>
+                      <option value="rosso">🔴 Rosso (Urgente / Bloccata)</option>
+                    </select>
+                  </div>
+
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px' }}>Imponibile (€):</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={editImponibile}
+                      onChange={(e) => setEditImponibile(e.target.value)}
+                      style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '16px', marginBottom: '10px', fontSize: '13px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={editIva} onChange={(e) => setEditIva(e.target.checked)} />
+                    Applica IVA 22%
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: '600', color: '#059669' }}>
+                    <input type="checkbox" checked={editPagata} onChange={(e) => setEditPagata(e.target.checked)} />
+                    Pratica Incassata / Pagata
+                  </label>
+                </div>
+
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px' }}>Promemoria / Cosa manca per riprendere:</label>
+                <input
+                  type="text"
+                  value={editPromemoria}
+                  onChange={(e) => setEditPromemoria(e.target.value)}
+                  placeholder="Es. Manca certificazione unica o conferma cliente..."
+                  style={{ width: '100%', padding: '8px', marginBottom: '12px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                />
+
+                <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '12px', marginBottom: '14px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>
+                    🗂️ Archivio Pratica (modificabile in caso di errori o integrazioni)
+                  </div>
+
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#475569', marginBottom: '3px' }}>
+                    📁 Pratica & Documentazione acquisita / richiesta:
+                  </label>
+                  <input
+                    type="text"
+                    value={editArchivioPratica}
+                    onChange={(e) => setEditArchivioPratica(e.target.value)}
+                    placeholder="Elenco documenti, deleghe, riferimenti file o cartella..."
+                    style={{ width: '100%', padding: '7px 8px', marginBottom: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px', boxSizing: 'border-box' }}
+                  />
+
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#475569', marginBottom: '3px' }}>
+                    🔄 Revisione / Modifiche o integrazioni successive:
+                  </label>
+                  <input
+                    type="text"
+                    value={editArchivioRevisione}
+                    onChange={(e) => setEditArchivioRevisione(e.target.value)}
+                    placeholder="Annota rettifiche, errori corretti o richieste successive..."
+                    style={{ width: '100%', padding: '7px 8px', marginBottom: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px', boxSizing: 'border-box' }}
+                  />
+
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#475569', marginBottom: '3px' }}>
+                    🧾 Ricevute (invio telematico, protocolli, quietanze):
+                  </label>
+                  <input
+                    type="text"
+                    value={editArchivioRicevute}
+                    onChange={(e) => setEditArchivioRicevute(e.target.value)}
+                    placeholder="Protocollo AdE/INPS, data ricevuta, estremi pagamento..."
+                    style={{ width: '100%', padding: '7px 8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px', boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px', paddingTop: '10px', borderTop: '1px solid #f1f5f9' }}>
+                  <button onClick={() => spostaSedePratica(selectedPratica.id, 'Firenze')} style={{ background: '#e0f2fe', color: '#0369a1', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
+                    📍 Assegna a Firenze
+                  </button>
+                  <button onClick={() => spostaSedePratica(selectedPratica.id, 'Brindisi')} style={{ background: '#ffedd5', color: '#9a3412', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
+                    📍 Inoltra a Brindisi
+                  </button>
+                  <button onClick={() => eliminaPratica(selectedPratica.id)} style={{ background: '#fee2e2', color: '#b91c1c', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', fontWeight: '600', marginLeft: 'auto' }}>
+                    🗑️ Elimina
                   </button>
                 </div>
 
-                <div style={{ textAlign: 'right' }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
                   <button onClick={() => setShowModal(false)} style={{ background: '#cbd5e1', border: 'none', padding: '8px 14px', borderRadius: '4px', cursor: 'pointer' }}>
-                    Chiudi
+                    Annulla
+                  </button>
+                  <button onClick={salvaModifichePratica} style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer', fontWeight: '600' }}>
+                    Salva Pratica & Archivio
                   </button>
                 </div>
               </div>
@@ -709,8 +2418,8 @@
 
           {/* MODALE NUOVA PRATICA */}
           {showSportelloModal && (
-            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
-              <div style={{ background: '#fff', padding: '25px', borderRadius: '8px', maxWidth: '480px', width: '100%' }}>
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px', overflowY: 'auto' }}>
+              <div style={{ background: '#fff', padding: '24px', borderRadius: '8px', maxWidth: '500px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
                 <h3 style={{ marginTop: 0 }}>+ Nuova Pratica / Inserimento</h3>
 
                 <input
@@ -727,6 +2436,33 @@
                   onChange={(e) => setNuovoClienteCf(e.target.value.toUpperCase())}
                   placeholder="Codice Fiscale (Isolamento GDPR)..."
                   style={{ width: '100%', padding: '8px', marginBottom: '10px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                />
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '10px' }}>
+                  <input
+                    type="text"
+                    value={nuovoClienteTelefono}
+                    onChange={(e) => setNuovoClienteTelefono(e.target.value)}
+                    placeholder="Telefono / WhatsApp..."
+                    style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px', boxSizing: 'border-box' }}
+                  />
+                  <input
+                    type="email"
+                    value={nuovoClienteEmail}
+                    onChange={(e) => setNuovoClienteEmail(e.target.value)}
+                    placeholder="Email cliente..."
+                    style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px', boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#475569', marginBottom: '3px' }}>
+                  Data Revisione / Aggiornamento periodico (opzionale):
+                </label>
+                <input
+                  type="date"
+                  value={nuovaDataRevisione}
+                  onChange={(e) => setNuovaDataRevisione(e.target.value)}
+                  style={{ width: '100%', padding: '7px 8px', marginBottom: '10px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px', boxSizing: 'border-box' }}
                 />
 
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px' }}>Tipologia Cliente:</label>
@@ -746,7 +2482,7 @@
                   </label>
                 )}
 
-                <div style={{ marginBottom: '12px' }}>
+                <div style={{ marginBottom: '10px' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>
                     <input
                       type="checkbox"
@@ -763,42 +2499,89 @@
                     <select
                       value={nuovoServizio}
                       onChange={(e) => setNuovoServizio(e.target.value)}
-                      style={{ width: '100%', padding: '8px', marginBottom: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                      style={{ width: '100%', padding: '8px', marginBottom: '10px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                     >
-                      <option value="Modello 730 Singolo">Modello 730 Singolo (€ 70,00)</option>
-                      <option value="Modello Redditi PF (ex Unico / Persone Fisiche)">Modello Redditi PF / ex Unico (€ 150,00)</option>
-                      <option value="Modello Redditi PF Forfettario">Modello Redditi PF Forfettario (€ 110,00)</option>
-                      <option value="Certificazione Unica (CU) / Dichiarativi">Certificazione Unica (CU) / Dichiarativi (€ 35,00)</option>
-                      <option value="ISEE / DSU Ordinario">ISEE / DSU Ordinario (€ 20,00)</option>
-                      <option value="Dichiarazione di Successione + Voltura">Dichiarazione di Successione + Voltura (€ 550,00)</option>
-                      <option value="Contratto di Locazione / RLI">Contratto di Locazione / RLI (€ 150,00)</option>
-                      <option value="Pratica Previdenziale / Patronato">Pratica Previdenziale / Patronato (€ 30,00)</option>
-                      <option value="Estratto Conto Contributivo / Pensione">Estratto Conto Contributivo / Pensione (€ 20,00)</option>
-                      <option value="Cedolino / Contratto Lavoro">Cedolino / Contratto Lavoro (€ 25,00)</option>
-                      <option value="Colf e Badanti (Assunzione / Gestione)">Colf e Badanti (€ 220,00)</option>
-                      <option value="IMU / F24 / Ravvedimento / Visure">IMU / F24 / Ravvedimento / Visure (€ 30,00)</option>
-                      <option value="Pratica ENEA">Pratica ENEA (€ 70,00)</option>
-                      <option value="Rinnovo / Rilascio Permesso di Soggiorno">Rinnovo / Rilascio Permesso di Soggiorno (€ 250,00)</option>
+                      {Object.keys(TARIFFE_SERVIZI).map((k) => (
+                        <option key={k} value={k}>
+                          {k === "Pratica Personalizzata / Altra Richiesta"
+                            ? `➕ ${k}`
+                            : `${k} (€ ${TARIFFE_SERVIZI[k].toFixed(2)})`}
+                        </option>
+                      ))}
                     </select>
+
+                    {isPersonalizzata && (
+                      <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '10px', marginBottom: '10px' }}>
+                        <input
+                          type="text"
+                          value={nomeServizioPersonalizzato}
+                          onChange={(e) => setNomeServizioPersonalizzato(e.target.value)}
+                          placeholder="Scrivi il nome della nuova pratica..."
+                          style={{ width: '100%', padding: '7px 8px', marginBottom: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px', boxSizing: 'border-box' }}
+                        />
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={importoServizioPersonalizzato}
+                          onChange={(e) => setImportoServizioPersonalizzato(e.target.value)}
+                          placeholder="Imponibile (€)..."
+                          style={{ width: '100%', padding: '7px 8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px', boxSizing: 'border-box' }}
+                        />
+                      </div>
+                    )}
 
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px' }}>Canale / Regime IVA:</label>
                     <select
                       value={nuovoCanaleIva}
                       onChange={(e) => setNuovoCanaleIva(e.target.value)}
-                      style={{ width: '100%', padding: '8px', marginBottom: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                      style={{ width: '100%', padding: '8px', marginBottom: '10px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                     >
                       <option value="studio">Canale Studio Commercialista (+ IVA 22%)</option>
                       <option value="caf">Canale Esclusivo CAF (Esente IVA)</option>
                     </select>
+
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', fontSize: '13px', fontWeight: '600', color: '#059669' }}>
+                      <input type="checkbox" checked={nuovaPagataSubito} onChange={(e) => setNuovaPagataSubito(e.target.checked)} />
+                      Segna già come Incassata allo sportello
+                    </label>
                   </>
                 )}
+
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', fontSize: '13px', fontWeight: '600', color: '#854d0e' }}>
+                  <input type="checkbox" checked={nuovaInSospeso} onChange={(e) => setNuovaInSospeso(e.target.checked)} />
+                  Lascia subito in sospeso (da riprendere in seguito)
+                </label>
 
                 <input
                   type="text"
                   value={nuovoPromemoria}
                   onChange={(e) => setNuovoPromemoria(e.target.value)}
-                  placeholder="Nota promemoria Standby (opzionale)..."
-                  style={{ width: '100%', padding: '8px', marginBottom: '12px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                  placeholder="Nota promemoria / cosa manca..."
+                  style={{ width: '100%', padding: '8px', marginBottom: '10px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                />
+
+                <input
+                  type="text"
+                  value={nuovoArchivioPratica}
+                  onChange={(e) => setNuovoArchivioPratica(e.target.value)}
+                  placeholder="Archivio Pratica / Documenti (opzionale)..."
+                  style={{ width: '100%', padding: '8px', marginBottom: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px', boxSizing: 'border-box' }}
+                />
+
+                <input
+                  type="text"
+                  value={nuovoArchivioRevisione}
+                  onChange={(e) => setNuovoArchivioRevisione(e.target.value)}
+                  placeholder="Archivio Revisione / Modifiche (opzionale)..."
+                  style={{ width: '100%', padding: '8px', marginBottom: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px', boxSizing: 'border-box' }}
+                />
+
+                <input
+                  type="text"
+                  value={nuovoArchivioRicevute}
+                  onChange={(e) => setNuovoArchivioRicevute(e.target.value)}
+                  placeholder="Archivio Ricevute / Protocolli (opzionale)..."
+                  style={{ width: '100%', padding: '8px', marginBottom: '12px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px', boxSizing: 'border-box' }}
                 />
 
                 <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '10px 12px', marginBottom: '15px', fontSize: '13px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -812,6 +2595,38 @@
                   </button>
                   <button onClick={aggiungiNuovaPratica} style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: '600' }}>
                     Salva Pratica
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* MODALE PONTE DATI QWEB / CESAC / INPS */}
+          {showExportModal && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
+              <div style={{ background: '#fff', padding: '24px', borderRadius: '8px', maxWidth: '620px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+                <h3 style={{ marginTop: 0 }}>📤 Ponte Dati Standardizzato (QWeb Zucchetti / Cesac / INPS)</h3>
+                <p style={{ fontSize: '13px', color: '#475569', marginTop: 0 }}>
+                  Copia questo tracciato CSV strutturato per riallineare o passare le pratiche verso flussi/gestionali esterni (QWeb, Cesac, fogli di lavorazione INPS) in attesa di assorbire internamente le relative funzioni.
+                </p>
+                <textarea
+                  readOnly
+                  value={generaCsvFlusso()}
+                  rows={8}
+                  style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '11px', fontFamily: 'monospace', boxSizing: 'border-box' }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '14px' }}>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard?.writeText(generaCsvFlusso());
+                      alert('Tracciato CSV copiato negli appunti!');
+                    }}
+                    style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '4px', cursor: 'pointer', fontWeight: '600' }}
+                  >
+                    Copia CSV
+                  </button>
+                  <button onClick={() => setShowExportModal(false)} style={{ background: '#cbd5e1', border: 'none', padding: '8px 14px', borderRadius: '4px', cursor: 'pointer' }}>
+                    Chiudi
                   </button>
                 </div>
               </div>
@@ -862,10 +2677,16 @@
           {showCassaModal && isFirenze && (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
               <div style={{ background: '#fff', padding: '25px', borderRadius: '8px', maxWidth: '450px', width: '100%' }}>
-                <h3 style={{ marginTop: 0 }}>💶 Cassa Firenze</h3>
-                <p style={{ fontSize: '14px' }}>
-                  Totale teorico pratiche attive: <strong>€ {pratiche.filter(p => p.sedeCompetenza === 'Firenze').reduce((acc, p) => acc + Number(calcolaTotale(p)), 0).toFixed(2)}</strong>
-                </p>
+                <h3 style={{ marginTop: 0 }}>💶 Riepilogo Cassa Firenze</h3>
+                <div style={{ background: '#dcfce7', padding: '12px', borderRadius: '6px', marginBottom: '10px', color: '#166534' }}>
+                  Incassato effettivo: <strong>€ {totaleIncassatoFirenze.toFixed(2)}</strong>
+                </div>
+                <div style={{ background: '#fef3c7', padding: '12px', borderRadius: '6px', marginBottom: '10px', color: '#92400e' }}>
+                  Da incassare (pratiche aperte): <strong>€ {totaleDaIncassareFirenze.toFixed(2)}</strong>
+                </div>
+                <div style={{ fontSize: '13px', color: '#475569' }}>
+                  Totale complessivo portafoglio Firenze: <strong>€ {(totaleIncassatoFirenze + totaleDaIncassareFirenze).toFixed(2)}</strong>
+                </div>
                 <div style={{ textAlign: 'right', marginTop: '15px' }}>
                   <button onClick={() => setShowCassaModal(false)} style={{ background: '#cbd5e1', border: 'none', padding: '8px 14px', borderRadius: '4px', cursor: 'pointer' }}>
                     Chiudi
