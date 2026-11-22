@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>StudioFlow Suite - Gestione Pratiche, CAF, Patronato & Rete</title>
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -18,6 +18,31 @@
     const SUPABASE_URL = 'https://mgmhzlmufllxriithtth.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_jXQVt0X8Av8E6qe_9xBxfQ_Jw1qwm1O';
     const STORAGE_BUCKET_PRIVATO = 'documenti-pratiche';
+
+    const PORTALI_DEFAULT = {
+      qweb: 'https://qwebcloud.zucchetti.com/SuiteQWebCloud/ActionLogin.do',
+      cesac: 'https://www.cesacgestionale.it/backoffice#dashboard',
+      ade: 'https://www.agenziaentrate.gov.it/',
+      inps: 'https://www.inps.it/',
+      desktopTelematico: 'https://www.agenziaentrate.gov.it/portale/web/guest/schede/servizi/desktop-telematico',
+      inail: 'https://www.inail.it/',
+      cassaEdile: 'https://www.cassaedile.it/',
+      wincoge: '',
+      pagheOpen: ''
+    };
+
+    const SISTEMI_ESTERNI = [
+      "QWeb",
+      "Cesac",
+      "WinCoge",
+      "Paghe Open",
+      "Agenzia delle Entrate",
+      "INPS",
+      "Desktop Telematico",
+      "INAIL",
+      "Cassa Edile"
+    ];
+
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const STORAGE_KEY = 'studioflow_pratiche_v1';
@@ -27,6 +52,8 @@
     const PRENOTAZIONI_KEY = 'studioflow_prenotazioni_v1';
     const CONFIG_FASCE_KEY = 'studioflow_fasce_orarie_v1';
     const STORICO_ANNATE_KEY = 'studioflow_storico_annate_v1';
+    const AUTONOMIA_KEY = 'studioflow_moduli_autonomi_v1';
+    const PORTALI_CONFIG_KEY = 'studioflow_portali_url_v1';
 
     const TARIFFE_SERVIZI = {
       "Certificazione Unica (CU) / Dichiarativi": 50.00,
@@ -79,6 +106,9 @@
         clientId: "RSSMRA80A01D612K",
         sedeCompetenza: "Firenze",
         perimetro: "Studio / Fiscale",
+        modalitaEsecuzione: "Piattaforma Autonoma",
+        sistemaEsterno: "Agenzia delle Entrate",
+        protocolloEsterno: "",
         cliente: "Mario Rossi",
         telefono: "3331234567",
         email: "mario.rossi@esempio.it",
@@ -107,6 +137,9 @@
         clientId: "BNCGPP75E15B180W",
         sedeCompetenza: "Brindisi",
         perimetro: "CAF / DSU-ISEE",
+        modalitaEsecuzione: "Gestionale / Portale Esterno",
+        sistemaEsterno: "QWeb",
+        protocolloEsterno: "DSU-BR-2026-104",
         cliente: "Giuseppe Bianchi",
         telefono: "3409876543",
         email: "g.bianchi@esempio.it",
@@ -145,6 +178,14 @@
       const [activeTab, setActiveTab] = useState('dashboard');
       const [dbStatus, setDbStatus] = useState('In attesa login');
 
+      const [portaliUrls, setPortaliUrls] = useState(() => {
+        try {
+          const saved = localStorage.getItem(PORTALI_CONFIG_KEY);
+          if (saved) return { ...PORTALI_DEFAULT, ...JSON.parse(saved) };
+        } catch (e) {}
+        return PORTALI_DEFAULT;
+      });
+
       const [pratiche, setPratiche] = useState(() => {
         try {
           const saved = localStorage.getItem(STORAGE_KEY);
@@ -159,6 +200,7 @@
       const [searchQuery, setSearchQuery] = useState('');
       const [filterStato, setFilterStato] = useState('tutte');
       const [filterPerimetro, setFilterPerimetro] = useState('tutti');
+      const [filterModalitaEsecuzione, setFilterModalitaEsecuzione] = useState('tutte');
 
       const [selectedPratica, setSelectedPratica] = useState(null);
       const [showModal, setShowModal] = useState(false);
@@ -167,6 +209,9 @@
       const [editSemaforo, setEditSemaforo] = useState('verde');
       const [editIva, setEditIva] = useState(true);
       const [editPagata, setEditPagata] = useState(false);
+      const [editModalitaEsecuzione, setEditModalitaEsecuzione] = useState('Piattaforma Autonoma');
+      const [editSistemaEsterno, setEditSistemaEsterno] = useState('QWeb');
+      const [editProtocolloEsterno, setEditProtocolloEsterno] = useState('');
       const [editTelefono, setEditTelefono] = useState('');
       const [editEmail, setEditEmail] = useState('');
       const [editDataRevisione, setEditDataRevisione] = useState('');
@@ -187,6 +232,9 @@
       const [aggiungiQuotaAssociativa, setAggiungiQuotaAssociativa] = useState(false);
       const [soloCaricamentoDocumenti, setSoloCaricamentoDocumenti] = useState(false);
       const [nuovoCanaleIva, setNuovoCanaleIva] = useState('studio');
+      const [nuovaModalitaEsecuzione, setNuovaModalitaEsecuzione] = useState('Piattaforma Autonoma');
+      const [nuovoSistemaEsterno, setNuovoSistemaEsterno] = useState('QWeb');
+      const [nuovoProtocolloEsterno, setNuovoProtocolloEsterno] = useState('');
       const [nuovoServizio, setNuovoServizio] = useState('Certificazione Unica (CU) / Dichiarativi');
       const [nomeServizioPersonalizzato, setNomeServizioPersonalizzato] = useState('');
       const [importoServizioPersonalizzato, setImportoServizioPersonalizzato] = useState('50.00');
@@ -320,10 +368,47 @@
       const [listaContiAnno, setListaContiAnno] = useState([]);
       const [noteAnnata, setNoteAnnata] = useState('');
 
+      const [autonomiaSubTab, setAutonomiaSubTab] = useState('dichiarativi');
+      const [moduliAutonomi, setModuliAutonomi] = useState(() => {
+        try {
+          const saved = localStorage.getItem(AUTONOMIA_KEY);
+          if (saved) return JSON.parse(saved);
+        } catch (e) {}
+        return [];
+      });
+      const [autoCliente, setAutoCliente] = useState('');
+      const [autoCf, setAutoCf] = useState('');
+      const [autoTipoModulo, setAutoTipoModulo] = useState('Modello Redditi Tardivo / Ravvedimento');
+      const [autoImportoBase, setAutoImportoBase] = useState('1000');
+      const [autoAliquotaSanzione, setAutoAliquotaSanzione] = useState('3.75');
+      const [autoGiorniRitardo, setAutoGiorniRitardo] = useState('30');
+      const [autoTassoInteresseAnnua, setAutoTassoInteresseAnnua] = useState('2.5');
+      const [autoDettaglioLavoro, setAutoDettaglioLavoro] = useState('');
+      const [csvImportTesto, setCsvImportTesto] = useState('');
+
+      const salvaPortaliUrls = (nuoviUrls) => {
+        setPortaliUrls(nuoviUrls);
+        try { localStorage.setItem(PORTALI_CONFIG_KEY, JSON.stringify(nuoviUrls)); } catch (e) {}
+      };
+
+      const apriPortaleEsterno = (url, etichettaPortale = "Applicativo") => {
+        if (!url || !url.trim()) {
+          alert(`Nessun URL web configurato per ${etichettaPortale}. Puoi impostarlo nella scheda "⚙️ Suite Autonoma (QWeb / Cesac)" -> "🔗 Portali & Applicativi".`);
+          return;
+        }
+        window.open(url.trim(), '_blank', 'noopener,noreferrer');
+      };
+
       const credentials = [
-        { id: 1, sede: "Firenze", portale: "Agenzia delle Entrate / Entratel", pin: "Abilitazione Intermediario" },
-        { id: 2, sede: "Firenze", portale: "INPS / Patronato / QWeb", pin: "Accesso Operatore" },
-        { id: 3, sede: "Brindisi", portale: "Sportello Collegato Brindisi", pin: "Accesso Sede" }
+        { id: 1, sede: "Firenze", portale: "Agenzia delle Entrate", pin: portaliUrls.ade },
+        { id: 2, sede: "Firenze", portale: "INPS", pin: portaliUrls.inps },
+        { id: 3, sede: "Firenze", portale: "Desktop Telematico", pin: portaliUrls.desktopTelematico },
+        { id: 4, sede: "Firenze", portale: "INAIL", pin: portaliUrls.inail },
+        { id: 5, sede: "Firenze / Edilizia", portale: "Cassa Edile", pin: portaliUrls.cassaEdile },
+        { id: 6, sede: "Firenze", portale: "QWeb Cloud (Zucchetti)", pin: portaliUrls.qweb },
+        { id: 7, sede: "Firenze / Rete", portale: "Cesac Gestionale", pin: portaliUrls.cesac },
+        { id: 8, sede: "Studio / Locale", portale: "WinCoge", pin: portaliUrls.wincoge || "Applicativo locale / URL non impostato" },
+        { id: 9, sede: "Studio / Locale", portale: "Paghe Open", pin: portaliUrls.pagheOpen || "Applicativo locale / URL non impostato" }
       ];
 
       const tariffarioBrindisi = [
@@ -386,11 +471,161 @@
         setStoricoAnnate(lista);
         try { localStorage.setItem(STORICO_ANNATE_KEY, JSON.stringify(lista)); } catch (e) {}
       };
+      const salvaModuliAutonomiLocale = (lista) => {
+        setModuliAutonomi(lista);
+        try { localStorage.setItem(AUTONOMIA_KEY, JSON.stringify(lista)); } catch (e) {}
+      };
 
       const etichettaAggiornamentoCorrente = () => {
         const sede = currentProfile === 'brindisi' ? 'Brindisi' : 'Firenze';
         const op = sessionUser?.email || (anteprimaLocaleAttiva ? 'Locale' : 'Sportello');
         return `${new Date().toISOString().slice(0, 10)} • ${sede} (${op})`;
+      };
+
+      const impostaModuloAutonomoPreset = (subTab) => {
+        setAutonomiaSubTab(subTab);
+        if (subTab === 'dichiarativi') {
+          setAutoTipoModulo('Modello Redditi Tardivo / Ravvedimento');
+        } else if (subTab === 'paghe_lavoro') {
+          setAutoTipoModulo('Cedolino / Assunzione / Colf & Badanti');
+        } else if (subTab === 'caf_adempimenti') {
+          setAutoTipoModulo('Pratica CAF / Adempimento / Scadenza');
+        }
+      };
+
+      const baseImp = Math.max(0, Number(autoImportoBase) || 0);
+      const sanPct = Math.max(0, Number(autoAliquotaSanzione) || 0);
+      const giorniRit = Math.max(0, Number(autoGiorniRitardo) || 0);
+      const tassoAnn = Math.max(0, Number(autoTassoInteresseAnnua) || 0);
+      const sanzioneStimata = baseImp * (sanPct / 100);
+      const interessiStimati = baseImp * (tassoAnn / 100) * (giorniRit / 365);
+      const totaleRavvedimentoStimato = baseImp + sanzioneStimata + interessiStimati;
+
+      const salvaSchedaAutonoma = (inviaAncheInCoda = false) => {
+        if (!autoCliente.trim()) {
+          alert('Inserisci il nome del cliente o assistito.');
+          return;
+        }
+        const riepilogoCalc = `Base € ${baseImp.toFixed(2)} | Sanzione ${sanPct}% (€ ${sanzioneStimata.toFixed(2)}) | Interessi ${giorniRit}gg (€ ${interessiStimati.toFixed(2)}) | Tot. stimato € ${totaleRavvedimentoStimato.toFixed(2)}`;
+        const nuovaScheda = {
+          id: Date.now(),
+          cliente: autoCliente.trim(),
+          cf: autoCf.trim().toUpperCase() || 'N/D',
+          tipoModulo: autoTipoModulo,
+          sede: isBrindisi ? 'Brindisi' : 'Firenze',
+          riepilogoCalc,
+          dettaglio: autoDettaglioLavoro.trim(),
+          data: new Date().toISOString().slice(0, 10)
+        };
+        salvaModuliAutonomiLocale([nuovaScheda, ...moduliAutonomi]);
+
+        if (inviaAncheInCoda) {
+          const isPaghe = autoTipoModulo.includes('Cedolino') || autoTipoModulo.includes('Colf');
+          const isCaf = autoTipoModulo.includes('CAF');
+          const voceServizio = isPaghe
+            ? 'Elaborazione Cedolino / Busta Paga'
+            : (isCaf ? 'Pratica ISEE / DSU' : 'Modello 730 / Redditi PF');
+
+          salvaLocale([{
+            id: Date.now() + 1,
+            clientId: autoCf.trim().toUpperCase() || `AUT${Date.now().toString().slice(-6)}`,
+            sedeCompetenza: isBrindisi ? 'Brindisi' : 'Firenze',
+            perimetro: isPaghe ? 'CED / Lavoro' : (isCaf ? 'CAF / DSU-ISEE' : 'Studio / Fiscale'),
+            modalitaEsecuzione: 'Piattaforma Autonoma',
+            sistemaEsterno: 'Agenzia delle Entrate',
+            protocolloEsterno: '',
+            cliente: autoCliente.trim(),
+            telefono: '',
+            email: '',
+            dataRevisione: '',
+            tipoCliente: 'Occasionale',
+            quotaAssociativaPagata: false,
+            quotaImporto: 0,
+            servizio: `${voceServizio} [${autoTipoModulo}]`,
+            modalitaLavorazione: 'Gestione Autonoma',
+            canale: isCaf ? 'Esclusivo CAF' : 'Studio Commercialista',
+            stato: 'Scheda autonoma pronta / verifica',
+            semaforo: 'giallo',
+            imponibile: TARIFFE_SERVIZI[voceServizio] ?? 50.00,
+            iva: !isCaf,
+            soloDocumenti: false,
+            pagata: false,
+            promemoria: `${autoTipoModulo}: ${riepilogoCalc}`,
+            archivioPratica: autoDettaglioLavoro.trim(),
+            archivioRevisione: riepilogoCalc,
+            archivioRicevute: '',
+            allegati: [],
+            ultimoAggiornamento: etichettaAggiornamentoCorrente()
+          }, ...pratiche]);
+          setActiveTab('dashboard');
+        } else {
+          setAutoCliente('');
+          setAutoCf('');
+          setAutoDettaglioLavoro('');
+        }
+      };
+
+      const importaCsvInPratiche = () => {
+        const righe = csvImportTesto
+          .split(/\r?\n/)
+          .map(r => r.trim())
+          .filter(Boolean);
+        if (righe.length === 0) {
+          alert('Incolla almeno una riga CSV (separatore ; o ,).');
+          return;
+        }
+        const aggiunte = [];
+        righe.forEach((riga, idx) => {
+          const sep = riga.includes(';') ? ';' : ',';
+          const parti = riga.split(sep).map(c => c.replace(/^"|"$/g, '').trim());
+          const primaCol = (parti[0] || '').toLowerCase();
+          if (idx === 0 && (primaCol === 'id' || primaCol === 'cliente' || primaCol === 'nome')) return;
+          const nome = parti.length >= 4 && !isNaN(Number(parti[0])) ? parti[3] : (parti[0] || `Importato ${idx + 1}`);
+          const cf = parti.length >= 5 && !isNaN(Number(parti[0])) ? parti[4] : (parti[1] || `IMP${Date.now()}${idx}`);
+          const servizio = parti.length >= 9 && !isNaN(Number(parti[0])) ? parti[8] : (parti[2] || 'Pratica Personalizzata / Altra Richiesta');
+          const impVal = parti.length >= 12 && !isNaN(Number(parti[0])) ? Number(parti[11].replace(',', '.')) : Number((parti[3] || '50').replace(',', '.'));
+          if (nome) {
+            aggiunte.push({
+              id: Date.now() + idx + 1,
+              clientId: cf.toUpperCase(),
+              sedeCompetenza: isBrindisi ? 'Brindisi' : 'Firenze',
+              perimetro: 'Studio / Fiscale',
+              modalitaEsecuzione: 'Piattaforma Autonoma',
+              sistemaEsterno: 'QWeb',
+              protocolloEsterno: '',
+              cliente: nome,
+              telefono: '',
+              email: '',
+              dataRevisione: '',
+              tipoCliente: 'Occasionale',
+              quotaAssociativaPagata: false,
+              quotaImporto: 0,
+              servizio,
+              modalitaLavorazione: 'Import CSV',
+              canale: 'Studio Commercialista',
+              stato: 'Importata da CSV',
+              semaforo: 'verde',
+              imponibile: isNaN(impVal) ? 50.00 : impVal,
+              iva: true,
+              soloDocumenti: false,
+              pagata: false,
+              promemoria: 'Verificare dati importati da CSV',
+              archivioPratica: riga,
+              archivioRevisione: '',
+              archivioRicevute: '',
+              allegati: [],
+              ultimoAggiornamento: etichettaAggiornamentoCorrente()
+            });
+          }
+        });
+        if (aggiunte.length === 0) {
+          alert('Nessuna riga valida trovata nel CSV.');
+          return;
+        }
+        salvaLocale([...aggiunte, ...pratiche]);
+        setCsvImportTesto('');
+        alert(`Importate ${aggiunte.length} pratiche nella coda!`);
+        setActiveTab('dashboard');
       };
 
       useEffect(() => {
@@ -717,6 +952,9 @@
           clientId: pensioneCf.trim().toUpperCase() || `PEN${Date.now()}`,
           sedeCompetenza: isBrindisi ? "Brindisi" : "Firenze",
           perimetro: "Patronato / INPS",
+          modalitaEsecuzione: "Piattaforma Autonoma",
+          sistemaEsterno: "INPS",
+          protocolloEsterno: "",
           cliente: nome,
           telefono: "",
           email: "",
@@ -776,6 +1014,9 @@
           clientId: invCf.trim().toUpperCase() || `INV${Date.now()}`,
           sedeCompetenza: isBrindisi ? "Brindisi" : "Firenze",
           perimetro: "Patronato / INPS",
+          modalitaEsecuzione: "Piattaforma Autonoma",
+          sistemaEsterno: "INPS",
+          protocolloEsterno: "",
           cliente: nome,
           telefono: "",
           email: "",
@@ -830,6 +1071,9 @@
             clientId: `PRN${Date.now().toString().slice(-6)}`,
             sedeCompetenza: sedeScelta,
             perimetro: "Sportello / Prenotazioni",
+            modalitaEsecuzione: "Piattaforma Autonoma",
+            sistemaEsterno: "QWeb",
+            protocolloEsterno: "",
             cliente: prenNome.trim(),
             telefono: prenTelefono.trim(),
             email: prenEmail.trim(),
@@ -866,6 +1110,9 @@
         setEditSemaforo(p.semaforo || 'verde');
         setEditIva(Boolean(p.iva));
         setEditPagata(Boolean(p.pagata));
+        setEditModalitaEsecuzione(p.modalitaEsecuzione || 'Piattaforma Autonoma');
+        setEditSistemaEsterno(p.sistemaEsterno || 'QWeb');
+        setEditProtocolloEsterno(p.protocolloEsterno || '');
         setEditTelefono(p.telefono || '');
         setEditEmail(p.email || '');
         setEditDataRevisione(p.dataRevisione || '');
@@ -892,6 +1139,9 @@
           semaforo: editSemaforo,
           iva: editIva,
           pagata: editPagata,
+          modalitaEsecuzione: editModalitaEsecuzione,
+          sistemaEsterno: editSistemaEsterno,
+          protocolloEsterno: editProtocolloEsterno.trim(),
           telefono: editTelefono.trim(),
           email: editEmail.trim(),
           dataRevisione: editDataRevisione,
@@ -983,6 +1233,9 @@
           clientId: nuovoClienteCf.trim().toUpperCase() || `CLI${Date.now()}`,
           sedeCompetenza: isBrindisi ? "Brindisi" : "Firenze",
           perimetro: perimetroCalcolato,
+          modalitaEsecuzione: nuovaModalitaEsecuzione,
+          sistemaEsterno: nuovoSistemaEsterno,
+          protocolloEsterno: nuovoProtocolloEsterno.trim(),
           cliente: nuovoClienteNome.trim(),
           telefono: nuovoClienteTelefono.trim(),
           email: nuovoClienteEmail.trim(),
@@ -1030,6 +1283,7 @@
         setShowSportelloModal(false);
         setNuovoClienteNome(''); setNuovoClienteCf(''); setNuovoClienteTelefono(''); setNuovoClienteEmail('');
         setNuovaDataRevisione(''); setNuovoPromemoria(''); setNuovaPagataSubito(false); setNuovaInSospeso(false);
+        setNuovoProtocolloEsterno('');
         setNuovoArchivioPratica(''); setNuovoArchivioRevisione(''); setNuovoArchivioRicevute('');
       };
 
@@ -1061,11 +1315,13 @@
       ).filter((p) => {
         if (isClienteIsolato) return true;
         if (filterPerimetro !== 'tutti' && (p.perimetro || 'Studio / Fiscale') !== filterPerimetro) return false;
+        if (filterModalitaEsecuzione !== 'tutte' && (p.modalitaEsecuzione || 'Piattaforma Autonoma') !== filterModalitaEsecuzione) return false;
         const q = searchQuery.trim().toLowerCase();
         const matchTesto = !q ||
           (p.cliente || '').toLowerCase().includes(q) ||
           (p.clientId || '').toLowerCase().includes(q) ||
-          (p.servizio || '').toLowerCase().includes(q);
+          (p.servizio || '').toLowerCase().includes(q) ||
+          (p.protocolloEsterno || '').toLowerCase().includes(q);
         if (!matchTesto) return false;
         if (filterStato === 'da_incassare') return !p.pagata && !p.soloDocumenti;
         if (filterStato === 'incassate') return Boolean(p.pagata);
@@ -1079,10 +1335,11 @@
 
       const generaCsvFlusso = () => {
         const righe = [
-          "ID;Sede;Perimetro;Cliente;CF;Telefono;Email;DataRevisione;Servizio;Canale;Stato;Imponibile;IVA;Totale;Pagata;ArchivioPratica;ArchivioRevisione;ArchivioRicevute;UltimoAggiornamento",
+          "ID;Sede;Perimetro;ModalitaEsecuzione;SistemaEsterno;ProtocolloEsterno;Cliente;CF;Telefono;Email;DataRevisione;Servizio;Canale;Stato;Imponibile;IVA;Totale;Pagata;ArchivioPratica;ArchivioRevisione;ArchivioRicevute;UltimoAggiornamento",
           ...pratiche.map(p => [
-            p.id, p.sedeCompetenza, `"${(p.perimetro || '').replace(/"/g, '""')}"`, `"${(p.cliente || '').replace(/"/g, '""')}"`,
-            p.clientId || "", `"${(p.telefono || '').replace(/"/g, '""')}"`, `"${(p.email || '').replace(/"/g, '""')}"`,
+            p.id, p.sedeCompetenza, `"${(p.perimetro || '').replace(/"/g, '""')}"`, `"${(p.modalitaEsecuzione || 'Piattaforma Autonoma').replace(/"/g, '""')}"`,
+            `"${(p.sistemaEsterno || '').replace(/"/g, '""')}"`, `"${(p.protocolloEsterno || '').replace(/"/g, '""')}"`,
+            `"${(p.cliente || '').replace(/"/g, '""')}"`, p.clientId || "", `"${(p.telefono || '').replace(/"/g, '""')}"`, `"${(p.email || '').replace(/"/g, '""')}"`,
             p.dataRevisione || "", `"${(p.servizio || '').replace(/"/g, '""')}"`, `"${(p.canale || '').replace(/"/g, '""')}"`,
             `"${(p.stato || '').replace(/"/g, '""')}"`, Number(p.imponibile || 0).toFixed(2), p.iva ? "22%" : "NO/ESENTE",
             calcolaTotale(p), p.pagata ? "SI" : "NO", `"${(p.archivioPratica || '').replace(/"/g, '""')}"`,
@@ -1100,7 +1357,7 @@
           `Data: ${new Date().toISOString().slice(0, 10)} | Incassato: € ${totaleIncassatoFirenze.toFixed(2)} | Da incassare: € ${totaleDaIncassareFirenze.toFixed(2)}`,
           "-------------------------------------------------------------------------",
           ...daEmettere.map(p =>
-            `[${p.pagata ? 'INCASSATA' : 'APERTA'}] ${p.cliente} (CF: ${p.clientId}) | ${p.servizio} | Canale: ${p.canale} | Imponibile: € ${Number(p.imponibile || 0).toFixed(2)} | IVA: ${p.iva ? '22%' : 'No/Esente'} | Totale: € ${calcolaTotale(p)} | Ricevuta: ${p.archivioRicevute || '-'}`
+            `[${p.pagata ? 'INCASSATA' : 'APERTA'}] ${p.cliente} (CF: ${p.clientId}) | ${p.servizio} | Modalità: ${p.modalitaEsecuzione || 'Piattaforma Autonoma'} (${p.sistemaEsterno || '-'}) | Prot.: ${p.protocolloEsterno || '-'} | Totale: € ${calcolaTotale(p)}`
           )
         ];
         return righe.join("\n");
@@ -1167,16 +1424,27 @@
               </h2>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              <select value={currentProfile} onChange={(e) => { setCurrentProfile(e.target.value); setActiveTab('dashboard'); setSessioneSbloccata(false); setOtpInserito(''); }} style={{ background: '#1e293b', color: '#fff', border: '1px solid #475569', borderRadius: '4px', padding: '6px 8px', fontSize: '13px', fontWeight: 'bold' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+              <select value={currentProfile} onChange={(e) => { setCurrentProfile(e.target.value); setActiveTab('dashboard'); setSessioneSbloccata(false); setOtpInserito(''); }} style={{ background: '#1e293b', color: '#fff', border: '1px solid #475569', borderRadius: '4px', padding: '6px 8px', fontSize: '12px', fontWeight: 'bold' }}>
                 <option value="mio_studio">Studio Firenze (Titolare)</option>
                 <option value="brindisi">Studio Brindisi</option>
                 <option value="cliente_isolato">📱 Simula Cliente No-SPID</option>
               </select>
-              {isBrindisi && <button onClick={() => setShowBrindisiTariffModal(true)} style={{ background: '#ea580c', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>⚙️ Tariffario Brindisi</button>}
-              {isFirenze && <button onClick={() => setShowCassaModal(true)} style={{ background: '#d97706', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>💶 Cassa Firenze (€ {totaleIncassatoFirenze.toFixed(2)})</button>}
-              {!isClienteIsolato && <button onClick={() => setShowVaultModal(true)} style={{ background: '#059669', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>🔐 Cassaforte</button>}
-              <button onClick={effettuaLogout} style={{ background: 'rgba(255,255,255,0.16)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)', padding: '7px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>{sessionUser ? 'Esci' : 'Login'}</button>
+              {!isClienteIsolato && (
+                <>
+                  <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.ade, 'Agenzia delle Entrate')} style={{ background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.22)', padding: '6px 9px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🏛️ AdE</button>
+                  <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.inps, 'INPS')} style={{ background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.22)', padding: '6px 9px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🏛️ INPS</button>
+                  <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.desktopTelematico, 'Desktop Telematico')} style={{ background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.22)', padding: '6px 9px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🖥️ Desktop Tel.</button>
+                  <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.inail, 'INAIL')} style={{ background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.22)', padding: '6px 9px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🛡️ INAIL</button>
+                  <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.cassaEdile, 'Cassa Edile')} style={{ background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.22)', padding: '6px 9px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🏗️ Cassa Edile</button>
+                  <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.qweb, 'QWeb')} style={{ background: '#1d4ed8', color: '#fff', border: '1px solid rgba(255,255,255,0.25)', padding: '6px 9px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🌐 QWeb</button>
+                  <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.cesac, 'Cesac')} style={{ background: '#0369a1', color: '#fff', border: '1px solid rgba(255,255,255,0.25)', padding: '6px 9px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🌐 Cesac</button>
+                </>
+              )}
+              {isBrindisi && <button onClick={() => setShowBrindisiTariffModal(true)} style={{ background: '#ea580c', color: '#fff', border: 'none', padding: '7px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>⚙️ Tariffario Brindisi</button>}
+              {isFirenze && <button onClick={() => setShowCassaModal(true)} style={{ background: '#d97706', color: '#fff', border: 'none', padding: '7px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>💶 Cassa Firenze (€ {totaleIncassatoFirenze.toFixed(2)})</button>}
+              {!isClienteIsolato && <button onClick={() => setShowVaultModal(true)} style={{ background: '#059669', color: '#fff', border: 'none', padding: '7px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>🔐 Cassaforte</button>}
+              <button onClick={effettuaLogout} style={{ background: 'rgba(255,255,255,0.16)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)', padding: '6px 11px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>{sessionUser ? 'Esci' : 'Login'}</button>
             </div>
           </header>
 
@@ -1184,6 +1452,7 @@
             <nav style={{ background: '#fff', padding: '0 30px', borderBottom: '1px solid #e2e8f0', display: 'flex', gap: '20px', overflowX: 'auto' }}>
               {[
                 ['dashboard', '📥 Coda Pratiche & Archivio'],
+                ['suite_autonoma', '⚙️ Suite Autonoma (QWeb / Cesac)'],
                 ['storico_annate', '🗂️ Storico Annate (CU / 730 / DSU-ISEE)'],
                 ['prenotazioni', '📅 Prenotazioni & Flusso Sportello'],
                 ['pensioni', '📊 Previdenza & Pensioni'],
@@ -1242,7 +1511,7 @@
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
                       <div>
                         <h3 style={{ margin: 0 }}>{isBrindisi ? "Cruscotto Sede Brindisi" : "Cruscotto Operativo Studio Firenze"}</h3>
-                        <p style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: '13px' }}>Pratiche, allegati, avvisi contatti ed esportazione verso canali ufficiali.</p>
+                        <p style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: '13px' }}>Scegli per ogni pratica tra <strong>Piattaforma Autonoma</strong> e <strong>Gestionale / Portale Esterno</strong>, tracciando lavorazione interna e protocolli.</p>
                       </div>
                       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                         <button onClick={() => { setExportTab('flussi'); setShowExportModal(true); }} style={{ background: '#475569', color: '#fff', border: 'none', padding: '10px 14px', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '13px' }}>📤 Esportazione & Canale Ufficiale</button>
@@ -1252,7 +1521,12 @@
                     </div>
 
                     <div style={{ background: '#fff', padding: '12px 15px', borderRadius: '8px', marginBottom: '15px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                      <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="🔍 Cerca cliente, CF o servizio..." style={{ flex: '1 1 240px', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }} />
+                      <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="🔍 Cerca cliente, CF, servizio o protocollo..." style={{ flex: '1 1 240px', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }} />
+                      <select value={filterModalitaEsecuzione} onChange={(e) => setFilterModalitaEsecuzione(e.target.value)} style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', background: '#fff' }}>
+                        <option value="tutte">Tutte le modalità</option>
+                        <option value="Piattaforma Autonoma">🤖 Piattaforma Autonoma</option>
+                        <option value="Gestionale / Portale Esterno">🔗 Gestionale / Portale Esterno</option>
+                      </select>
                       <select value={filterPerimetro} onChange={(e) => setFilterPerimetro(e.target.value)} style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', background: '#fff' }}>
                         <option value="tutti">Tutti i perimetri</option>
                         <option value="Studio / Fiscale">Studio / Fiscale</option>
@@ -1274,64 +1548,191 @@
                         <thead>
                           <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', color: '#475569' }}>
                             <th style={{ padding: '12px 15px' }}>Stato</th>
-                            <th style={{ padding: '12px 15px' }}>Sede & Perimetro</th>
+                            <th style={{ padding: '12px 15px' }}>Sede & Modalità</th>
                             <th style={{ padding: '12px 15px' }}>Cliente & CF</th>
-                            <th style={{ padding: '12px 15px' }}>Servizio & Archivio</th>
+                            <th style={{ padding: '12px 15px' }}>Servizio, Riscontro & Archivio</th>
                             {isFirenze && <th style={{ padding: '12px 15px' }}>Importo</th>}
                             <th style={{ padding: '12px 15px', textAlign: 'center' }}>Azioni</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {praticheFiltrate.map((p) => (
-                            <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                              <td style={{ padding: '12px 15px' }}><span style={{ height: '13px', width: '13px', display: 'inline-block', borderRadius: '50%', background: p.semaforo === 'verde' ? '#22c55e' : p.semaforo === 'giallo' ? '#eab308' : '#ef4444' }} /></td>
-                              <td style={{ padding: '12px 15px' }}><strong>{p.sedeCompetenza}</strong><div style={{ fontSize: '11px', color: '#64748b' }}>{p.perimetro || 'Studio / Fiscale'}</div></td>
-                              <td style={{ padding: '12px 15px' }}><strong>{p.cliente}</strong><div style={{ fontSize: '11px', fontFamily: 'monospace', color: '#64748b' }}>{p.clientId}</div></td>
-                              <td style={{ padding: '12px 15px' }}>
-                                <strong>{p.servizio}</strong>
-                                <div style={{ fontSize: '12px', color: '#475569' }}>{p.stato}</div>
-                                {p.dataRevisione && <div style={{ fontSize: '11px', color: p.dataRevisione <= oggiIso ? '#b91c1c' : '#1d4ed8', fontWeight: '700' }}>🗓️ Revisione: {p.dataRevisione}</div>}
-                                {(p.archivioPratica || p.archivioRicevute || (p.allegati && p.allegati.length > 0)) && (
-                                  <div style={{ marginTop: '5px', fontSize: '11px', background: '#f8fafc', padding: '5px 8px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
-                                    {p.archivioPratica && <div>📁 {p.archivioPratica}</div>}
-                                    {p.archivioRicevute && <div>🧾 {p.archivioRicevute}</div>}
-                                    {p.allegati && p.allegati.length > 0 && <div>📎 Allegati: {p.allegati.map(a => a.nome).join(', ')}</div>}
-                                  </div>
-                                )}
-                                {p.ultimoAggiornamento && <div style={{ fontSize: '10px', color: '#64748b', marginTop: '3px' }}>🕒 {p.ultimoAggiornamento}</div>}
-                                {p.promemoria && (
-                                  <div style={{ marginTop: '5px', background: '#fef9c3', padding: '5px 8px', borderRadius: '4px', fontSize: '11px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <span>⏸️ {p.promemoria}</span>
-                                    <button onClick={() => interrompiPromemoria(p.id)} style={{ background: '#ca8a04', color: '#fff', border: 'none', padding: '2px 6px', borderRadius: '3px', cursor: 'pointer', fontSize: '10px' }}>Riprendi</button>
-                                  </div>
-                                )}
-                              </td>
-                              {isFirenze && (
+                          {praticheFiltrate.map((p) => {
+                            const modExec = p.modalitaEsecuzione || 'Piattaforma Autonoma';
+                            const isEsterno = modExec === 'Gestionale / Portale Esterno';
+                            return (
+                              <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                <td style={{ padding: '12px 15px' }}><span style={{ height: '13px', width: '13px', display: 'inline-block', borderRadius: '50%', background: p.semaforo === 'verde' ? '#22c55e' : p.semaforo === 'giallo' ? '#eab308' : '#ef4444' }} /></td>
                                 <td style={{ padding: '12px 15px' }}>
-                                  <strong>€ {calcolaTotale(p)}</strong>
-                                  <div style={{ fontSize: '10px', fontWeight: 'bold', color: p.pagata ? '#166534' : '#92400e' }}>{p.soloDocumenti ? 'GRATUITO' : (p.pagata ? '✓ INCASSATA' : '⏳ DA INCASSARE')}</div>
+                                  <strong>{p.sedeCompetenza}</strong>
+                                  <div style={{ fontSize: '11px', color: '#64748b' }}>{p.perimetro || 'Studio / Fiscale'}</div>
+                                  <div style={{ marginTop: '4px' }}>
+                                    <span style={{ fontSize: '10px', fontWeight: '700', padding: '2px 6px', borderRadius: '4px', background: isEsterno ? '#fef3c7' : '#dbeafe', color: isEsterno ? '#92400e' : '#1e40af' }}>
+                                      {isEsterno ? `🔗 ${p.sistemaEsterno || 'Esterno'}` : '🤖 Autonoma'}
+                                    </span>
+                                  </div>
                                 </td>
-                              )}
-                              <td style={{ padding: '12px 15px', textAlign: 'center' }}>
-                                <div style={{ display: 'flex', justifyContent: 'center', gap: '5px', flexWrap: 'wrap' }}>
-                                  <button onClick={() => apriModaleGestione(p)} style={{ background: '#1e293b', color: '#fff', border: 'none', padding: '6px 9px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>✏️ Gestisci</button>
-                                  {p.email && <button onClick={() => apriEmailAvviso(p)} style={{ background: '#4f46e5', color: '#fff', border: 'none', padding: '6px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}>📧</button>}
-                                  {(p.telefono || p.email) && <button onClick={() => apriMessaggioAvviso(p)} style={{ background: '#16a34a', color: '#fff', border: 'none', padding: '6px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}>💬</button>}
-                                  {isFirenze && !p.soloDocumenti && (
-                                    <button onClick={() => toggleIncassoRapido(p)} style={{ background: p.pagata ? '#e2e8f0' : '#059669', color: p.pagata ? '#334155' : '#fff', border: 'none', padding: '6px 9px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>
-                                      {p.pagata ? 'Annulla' : '💶 Incassa'}
-                                    </button>
+                                <td style={{ padding: '12px 15px' }}><strong>{p.cliente}</strong><div style={{ fontSize: '11px', fontFamily: 'monospace', color: '#64748b' }}>{p.clientId}</div></td>
+                                <td style={{ padding: '12px 15px' }}>
+                                  <strong>{p.servizio}</strong>
+                                  <div style={{ fontSize: '12px', color: '#475569' }}>{p.stato}</div>
+                                  {p.protocolloEsterno && <div style={{ fontSize: '11px', color: '#0f766e', fontWeight: '600' }}>📌 Protocollo/Ricevuta: {p.protocolloEsterno}</div>}
+                                  {p.dataRevisione && <div style={{ fontSize: '11px', color: p.dataRevisione <= oggiIso ? '#b91c1c' : '#1d4ed8', fontWeight: '700' }}>🗓️ Revisione: {p.dataRevisione}</div>}
+                                  {(p.archivioPratica || p.archivioRicevute || (p.allegati && p.allegati.length > 0)) && (
+                                    <div style={{ marginTop: '5px', fontSize: '11px', background: '#f8fafc', padding: '5px 8px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
+                                      {p.archivioPratica && <div>📁 {p.archivioPratica}</div>}
+                                      {p.archivioRicevute && <div>🧾 {p.archivioRicevute}</div>}
+                                      {p.allegati && p.allegati.length > 0 && <div>📎 Allegati: {p.allegati.map(a => a.nome).join(', ')}</div>}
+                                    </div>
                                   )}
-                                  {p.servizio.includes('Successione') && !p.preventivoAccettato && (
-                                    <button onClick={() => approvaPreventivoSuccessione(p.id)} style={{ background: '#16a34a', color: '#fff', border: 'none', padding: '6px 9px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}>Approva</button>
+                                  {p.ultimoAggiornamento && <div style={{ fontSize: '10px', color: '#64748b', marginTop: '3px' }}>🕒 {p.ultimoAggiornamento}</div>}
+                                  {p.promemoria && (
+                                    <div style={{ marginTop: '5px', background: '#fef9c3', padding: '5px 8px', borderRadius: '4px', fontSize: '11px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                      <span>⏸️ {p.promemoria}</span>
+                                      <button onClick={() => interrompiPromemoria(p.id)} style={{ background: '#ca8a04', color: '#fff', border: 'none', padding: '2px 6px', borderRadius: '3px', cursor: 'pointer', fontSize: '10px' }}>Riprendi</button>
+                                    </div>
                                   )}
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
+                                </td>
+                                {isFirenze && (
+                                  <td style={{ padding: '12px 15px' }}>
+                                    <strong>€ {calcolaTotale(p)}</strong>
+                                    <div style={{ fontSize: '10px', fontWeight: 'bold', color: p.pagata ? '#166534' : '#92400e' }}>{p.soloDocumenti ? 'GRATUITO' : (p.pagata ? '✓ INCASSATA' : '⏳ DA INCASSARE')}</div>
+                                  </td>
+                                )}
+                                <td style={{ padding: '12px 15px', textAlign: 'center' }}>
+                                  <div style={{ display: 'flex', justifyContent: 'center', gap: '5px', flexWrap: 'wrap' }}>
+                                    <button onClick={() => apriModaleGestione(p)} style={{ background: '#1e293b', color: '#fff', border: 'none', padding: '6px 9px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>✏️ Gestisci</button>
+                                    {p.email && <button onClick={() => apriEmailAvviso(p)} style={{ background: '#4f46e5', color: '#fff', border: 'none', padding: '6px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}>📧</button>}
+                                    {(p.telefono || p.email) && <button onClick={() => apriMessaggioAvviso(p)} style={{ background: '#16a34a', color: '#fff', border: 'none', padding: '6px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}>💬</button>}
+                                    {isFirenze && !p.soloDocumenti && (
+                                      <button onClick={() => toggleIncassoRapido(p)} style={{ background: p.pagata ? '#e2e8f0' : '#059669', color: p.pagata ? '#334155' : '#fff', border: 'none', padding: '6px 9px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>
+                                        {p.pagata ? 'Annulla' : '💶 Incassa'}
+                                      </button>
+                                    )}
+                                    {p.servizio.includes('Successione') && !p.preventivoAccettato && (
+                                      <button onClick={() => approvaPreventivoSuccessione(p.id)} style={{ background: '#16a34a', color: '#fff', border: 'none', padding: '6px 9px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}>Approva</button>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
+                  </div>
+                )}
+
+                {activeTab === 'suite_autonoma' && (
+                  <div style={{ background: '#fff', padding: '24px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
+                      <div>
+                        <h3 style={{ margin: 0 }}>⚙️ Suite Autonoma Interna & Collegamenti Portali / Applicativi</h3>
+                        <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#64748b' }}>
+                          Gestione autonoma interna + collegamenti rapidi a <strong>AdE</strong>, <strong>INPS</strong>, <strong>Desktop Telematico</strong>, <strong>INAIL</strong>, <strong>Cassa Edile</strong>, <strong>QWeb</strong>, <strong>Cesac</strong>, <strong>WinCoge</strong> e <strong>Paghe Open</strong>.
+                        </p>
+                      </div>
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                        <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.ade, 'Agenzia delle Entrate')} style={{ background: '#1e293b', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🏛️ AdE</button>
+                        <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.inps, 'INPS')} style={{ background: '#1e293b', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🏛️ INPS</button>
+                        <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.desktopTelematico, 'Desktop Telematico')} style={{ background: '#1e293b', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🖥️ Desktop Tel.</button>
+                        <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.inail, 'INAIL')} style={{ background: '#1e293b', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🛡️ INAIL</button>
+                        <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.cassaEdile, 'Cassa Edile')} style={{ background: '#1e293b', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🏗️ Cassa Edile</button>
+                        <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.qweb, 'QWeb')} style={{ background: '#1d4ed8', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🌐 QWeb</button>
+                        <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.cesac, 'Cesac')} style={{ background: '#0369a1', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🌐 Cesac</button>
+                        <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.wincoge, 'WinCoge')} style={{ background: '#475569', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>💻 WinCoge</button>
+                        <button type="button" onClick={() => apriPortaleEsterno(portaliUrls.pagheOpen, 'Paghe Open')} style={{ background: '#475569', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>💻 Paghe Open</button>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
+                      {[
+                        ['dichiarativi', '📑 Dichiarativi & Ravvedimento'],
+                        ['paghe_lavoro', '👥 Lavoro / Paghe / Colf'],
+                        ['caf_adempimenti', '🏛️ CAF / Adempimenti'],
+                        ['import_csv', '📥 Importa / Riallinea CSV'],
+                        ['portali_config', '🔗 Portali & Applicativi']
+                      ].map(([key, label]) => (
+                        <button key={key} type="button" onClick={() => key === 'portali_config' ? setAutonomiaSubTab(key) : impostaModuloAutonomoPreset(key)} style={{ background: autonomiaSubTab === key ? '#2563eb' : '#f1f5f9', color: autonomiaSubTab === key ? '#fff' : '#334155', border: 'none', padding: '7px 12px', borderRadius: '5px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {autonomiaSubTab === 'portali_config' ? (
+                      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '14px' }}>
+                        <div style={{ fontSize: '13px', fontWeight: '700', marginBottom: '6px' }}>🔗 Configurazione URL Portali & Applicativi (WinCoge / Paghe Open)</div>
+                        <p style={{ fontSize: '12px', color: '#475569', marginTop: 0 }}>
+                          Per <strong>WinCoge</strong> e <strong>Paghe Open</strong> (se usati in versione web/remota o tramite link dedicato), puoi incollare qui il relativo indirizzo URL; i portali istituzionali sono già preimpostati.
+                        </p>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '10px' }}>
+                          {[
+                            ['ade', 'Agenzia delle Entrate'],
+                            ['inps', 'INPS'],
+                            ['desktopTelematico', 'Desktop Telematico'],
+                            ['inail', 'INAIL'],
+                            ['cassaEdile', 'Cassa Edile'],
+                            ['qweb', 'QWeb Cloud'],
+                            ['cesac', 'Cesac Gestionale'],
+                            ['wincoge', 'WinCoge (URL / percorso web)'],
+                            ['pagheOpen', 'Paghe Open (URL / percorso web)']
+                          ].map(([k, lbl]) => (
+                            <label key={k} style={{ fontSize: '12px' }}>
+                              <strong>{lbl}</strong>
+                              <input type="text" value={portaliUrls[k] || ''} onChange={(e) => salvaPortaliUrls({ ...portaliUrls, [k]: e.target.value })} placeholder="https://..." style={{ width: '100%', padding: '6px 8px', marginTop: '3px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box', fontSize: '12px' }} />
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ) : autonomiaSubTab === 'import_csv' ? (
+                      <div>
+                        <p style={{ fontSize: '12px', color: '#475569', marginTop: 0 }}>
+                          Incolla qui righe CSV (es. <code>Mario Rossi;RSSMRA80A01D612K;Modello 730 / Redditi PF;70.00</code> oppure un CSV esportato da questo gestionale) per caricarle direttamente nella coda.
+                        </p>
+                        <textarea value={csvImportTesto} onChange={(e) => setCsvImportTesto(e.target.value)} rows={7} placeholder="Cliente;CF;Servizio;Imponibile" style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px', fontFamily: 'monospace', boxSizing: 'border-box', marginBottom: '10px' }} />
+                        <button type="button" onClick={importaCsvInPratiche} style={{ background: '#059669', color: '#fff', border: 'none', padding: '9px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>📥 Importa Righe in Coda</button>
+                      </div>
+                    ) : (
+                      <div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', marginBottom: '12px' }}>
+                          <input type="text" value={autoCliente} onChange={(e) => setAutoCliente(e.target.value)} placeholder="Nome e Cognome / Azienda..." style={{ padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '13px' }} />
+                          <input type="text" value={autoCf} onChange={(e) => setAutoCf(e.target.value.toUpperCase())} placeholder="Codice Fiscale / P.IVA..." style={{ padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '13px' }} />
+                          <select value={autoTipoModulo} onChange={(e) => setAutoTipoModulo(e.target.value)} style={{ padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '13px', background: '#fff' }}>
+                            <option value="Modello Redditi Tardivo / Ravvedimento">Modello Redditi Tardivo / Ravvedimento</option>
+                            <option value="Cedolino / Assunzione / Colf & Badanti">Cedolino / Assunzione / Colf & Badanti</option>
+                            <option value="Pratica CAF / Adempimento / Scadenza">Pratica CAF / Adempimento / Scadenza</option>
+                          </select>
+                        </div>
+
+                        {autonomiaSubTab === 'dichiarativi' && (
+                          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px', marginBottom: '12px' }}>
+                            <div style={{ fontSize: '12px', fontWeight: '700', marginBottom: '8px' }}>🧮 Simulatore Interno Ravvedimento / Integrazione (Stima Orientativa)</div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '8px', marginBottom: '8px' }}>
+                              <label style={{ fontSize: '12px' }}>Imposta / Base (€): <input type="number" step="0.01" value={autoImportoBase} onChange={(e) => setAutoImportoBase(e.target.value)} style={{ width: '100%', padding: '6px', boxSizing: 'border-box' }} /></label>
+                              <label style={{ fontSize: '12px' }}>Sanzione ridotta (%): <input type="number" step="0.01" value={autoAliquotaSanzione} onChange={(e) => setAutoAliquotaSanzione(e.target.value)} style={{ width: '100%', padding: '6px', boxSizing: 'border-box' }} /></label>
+                              <label style={{ fontSize: '12px' }}>Giorni ritardo: <input type="number" value={autoGiorniRitardo} onChange={(e) => setAutoGiorniRitardo(e.target.value)} style={{ width: '100%', padding: '6px', boxSizing: 'border-box' }} /></label>
+                              <label style={{ fontSize: '12px' }}>Tasso annuo (%): <input type="number" step="0.01" value={autoTassoInteresseAnnua} onChange={(e) => setAutoTassoInteresseAnnua(e.target.value)} style={{ width: '100%', padding: '6px', boxSizing: 'border-box' }} /></label>
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#1e293b' }}>
+                              Sanzione stimata: <strong>€ {sanzioneStimata.toFixed(2)}</strong> • Interessi stimati: <strong>€ {interessiStimati.toFixed(2)}</strong> • Totale orientativo: <strong>€ {totaleRavvedimentoStimato.toFixed(2)}</strong>
+                            </div>
+                          </div>
+                        )}
+
+                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '16px' }}>
+                          <input type="text" value={autoDettaglioLavoro} onChange={(e) => setAutoDettaglioLavoro(e.target.value)} placeholder="Dettagli lavorazione (es. periodo paga, codici tributo, scadenza, note)..." style={{ flex: '1 1 260px', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px' }} />
+                          <button type="button" onClick={() => salvaSchedaAutonoma(false)} style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '12px' }}>💾 Salva Scheda</button>
+                          <button type="button" onClick={() => salvaSchedaAutonoma(true)} style={{ background: '#059669', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '12px' }}>📥 Salva e Invia in Coda</button>
+                        </div>
+
+                        {moduliAutonomi.map((m) => (
+                          <div key={m.id} style={{ padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px', marginBottom: '8px', background: '#f8fafc', fontSize: '12px' }}>
+                            <div><strong>{m.cliente}</strong> (<code>{m.cf}</code>) — <strong>{m.tipoModulo}</strong> [{m.sede} • {m.data}]</div>
+                            <div style={{ marginTop: '3px', color: '#334155' }}>{m.riepilogoCalc}</div>
+                            {m.dettaglio && <div style={{ marginTop: '3px', color: '#475569' }}>Note: {m.dettaglio}</div>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1588,15 +1989,30 @@
             )}
           </main>
 
-          {/* MODALE GESTIONE PRATICA & ALLEGATI */}
+          {/* MODALE GESTIONE PRATICA, MODALITÀ OPERATIVA & ALLEGATI */}
           {showModal && selectedPratica && (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
-              <div style={{ background: '#fff', padding: '24px', borderRadius: '8px', maxWidth: '560px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+              <div style={{ background: '#fff', padding: '24px', borderRadius: '8px', maxWidth: '580px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                   <h3 style={{ margin: 0 }}>✏️ {selectedPratica.cliente}</h3>
                   <button type="button" onClick={impostaInSospesoNelModale} style={{ background: '#fef08a', border: '1px solid #eab308', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: '700' }}>⏸️ In Sospeso</button>
                 </div>
-                <input type="text" value={editStato} onChange={(e) => setEditStato(e.target.value)} placeholder="Stato..." style={{ width: '100%', padding: '8px', marginBottom: '10px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+
+                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '10px', marginBottom: '10px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: '700', marginBottom: '6px' }}>⚙️ Modalità Operativa & Riscontro Esterno</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+                    <select value={editModalitaEsecuzione} onChange={(e) => setEditModalitaEsecuzione(e.target.value)} style={{ padding: '7px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px', background: '#fff' }}>
+                      <option value="Piattaforma Autonoma">🤖 Piattaforma Autonoma</option>
+                      <option value="Gestionale / Portale Esterno">🔗 Gestionale / Portale Esterno</option>
+                    </select>
+                    <select value={editSistemaEsterno} onChange={(e) => setEditSistemaEsterno(e.target.value)} style={{ padding: '7px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px', background: '#fff' }}>
+                      {SISTEMI_ESTERNI.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <input type="text" value={editProtocolloEsterno} onChange={(e) => setEditProtocolloEsterno(e.target.value)} placeholder="Numero protocollo / ricevuta esterna / data invio..." style={{ width: '100%', padding: '7px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px', boxSizing: 'border-box' }} />
+                </div>
+
+                <input type="text" value={editStato} onChange={(e) => setEditStato(e.target.value)} placeholder="Stato lavorazione interna..." style={{ width: '100%', padding: '8px', marginBottom: '10px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
                 <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
                   <select value={editSemaforo} onChange={(e) => setEditSemaforo(e.target.value)} style={{ flex: 1, padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }}>
                     <option value="verde">🟢 Verde</option>
@@ -1611,7 +2027,7 @@
                 </div>
                 <input type="text" value={editPromemoria} onChange={(e) => setEditPromemoria(e.target.value)} placeholder="Promemoria..." style={{ width: '100%', padding: '8px', marginBottom: '10px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
                 <input type="text" value={editArchivioPratica} onChange={(e) => setEditArchivioPratica(e.target.value)} placeholder="Archivio pratica / documenti..." style={{ width: '100%', padding: '7px', marginBottom: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px', boxSizing: 'border-box' }} />
-                <input type="text" value={editArchivioRicevute} onChange={(e) => setEditArchivioRicevute(e.target.value)} placeholder="Ricevute / protocolli..." style={{ width: '100%', padding: '7px', marginBottom: '10px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px', boxSizing: 'border-box' }} />
+                <input type="text" value={editArchivioRicevute} onChange={(e) => setEditArchivioRicevute(e.target.value)} placeholder="Ricevute / note riscontro..." style={{ width: '100%', padding: '7px', marginBottom: '10px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px', boxSizing: 'border-box' }} />
 
                 <div style={{ marginBottom: '12px' }}>
                   <label style={{ display: 'inline-block', background: '#0f766e', color: '#fff', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
@@ -1644,7 +2060,7 @@
           {/* MODALE NUOVA PRATICA */}
           {showSportelloModal && (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
-              <div style={{ background: '#fff', padding: '24px', borderRadius: '8px', maxWidth: '490px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+              <div style={{ background: '#fff', padding: '24px', borderRadius: '8px', maxWidth: '500px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
                 <h3 style={{ marginTop: 0 }}>+ Nuova Pratica</h3>
                 <input type="text" value={nuovoClienteNome} onChange={(e) => setNuovoClienteNome(e.target.value)} placeholder="Nome e Cognome..." style={{ width: '100%', padding: '8px', marginBottom: '10px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
                 <input type="text" value={nuovoClienteCf} onChange={(e) => setNuovoClienteCf(e.target.value.toUpperCase())} placeholder="Codice Fiscale..." style={{ width: '100%', padding: '8px', marginBottom: '10px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
@@ -1652,6 +2068,21 @@
                   <input type="text" value={nuovoClienteTelefono} onChange={(e) => setNuovoClienteTelefono(e.target.value)} placeholder="Telefono..." style={{ padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px' }} />
                   <input type="email" value={nuovoClienteEmail} onChange={(e) => setNuovoClienteEmail(e.target.value)} placeholder="Email..." style={{ padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px' }} />
                 </div>
+
+                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '10px', marginBottom: '10px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: '700', marginBottom: '6px' }}>⚙️ Modalità di Lavorazione</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+                    <select value={nuovaModalitaEsecuzione} onChange={(e) => setNuovaModalitaEsecuzione(e.target.value)} style={{ padding: '7px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px', background: '#fff' }}>
+                      <option value="Piattaforma Autonoma">🤖 Piattaforma Autonoma</option>
+                      <option value="Gestionale / Portale Esterno">🔗 Gestionale / Portale Esterno</option>
+                    </select>
+                    <select value={nuovoSistemaEsterno} onChange={(e) => setNuovoSistemaEsterno(e.target.value)} style={{ padding: '7px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px', background: '#fff' }}>
+                      {SISTEMI_ESTERNI.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <input type="text" value={nuovoProtocolloEsterno} onChange={(e) => setNuovoProtocolloEsterno(e.target.value)} placeholder="Protocollo / ricevuta esterna (opzionale)..." style={{ width: '100%', padding: '7px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px', boxSizing: 'border-box' }} />
+                </div>
+
                 <select value={nuovoServizio} onChange={(e) => setNuovoServizio(e.target.value)} style={{ width: '100%', padding: '8px', marginBottom: '10px', borderRadius: '4px', border: '1px solid #cbd5e1' }}>
                   {Object.keys(TARIFFE_SERVIZI).map((k) => <option key={k} value={k}>{k} (€ {TARIFFE_SERVIZI[k].toFixed(2)})</option>)}
                 </select>
@@ -1738,9 +2169,9 @@
 
           {showVaultModal && (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
-              <div style={{ background: '#fff', padding: '24px', borderRadius: '8px', maxWidth: '480px', width: '100%' }}>
+              <div style={{ background: '#fff', padding: '24px', borderRadius: '8px', maxWidth: '520px', width: '100%' }}>
                 <h3 style={{ marginTop: 0 }}>🔐 Cassaforte & Portali</h3>
-                {credentials.map((c) => <div key={c.id} style={{ padding: '6px 0', borderBottom: '1px solid #f1f5f9', fontSize: '13px' }}><strong>{c.sede}:</strong> {c.portale} ({c.pin})</div>)}
+                {credentials.map((c) => <div key={c.id} style={{ padding: '7px 0', borderBottom: '1px solid #f1f5f9', fontSize: '12px', wordBreak: 'break-all' }}><strong>{c.sede} — {c.portale}:</strong> {c.pin}</div>)}
                 <div style={{ textAlign: 'right', marginTop: '14px' }}><button onClick={() => setShowVaultModal(false)} style={{ background: '#cbd5e1', border: 'none', padding: '7px 12px', borderRadius: '4px', cursor: 'pointer' }}>Chiudi</button></div>
               </div>
             </div>
